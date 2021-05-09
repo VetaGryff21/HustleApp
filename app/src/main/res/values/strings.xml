@@ -1,0 +1,33 @@
+<resources>
+    <string name="app_name">MyApp</string>
+    <string name="start">Профиль</string>
+    <string name="btnMetronome">Метроном</string>
+    <string name="btnSearch">Поиск танцоров</string>
+    <string name="search">найти</string>
+
+    <string name="minus_one">-1</string>
+    <string name="minus_five">-5</string>
+    <string name="add_one">+1</string>
+    <string name="add_five">+5</string>
+    <string name="title_bpm">BPM</string>
+    <string name="toolbar_metronome">Metronome</string>
+
+
+    <string name="dancer_name">Имя: </string>
+    <string name="dancer_code">Код: </string>
+    <string name="dancer_club">Клуб: </string>
+    <string name="dancer_dnd_bg">Bg: </string>
+    <string name="dancer_dnd_rs">Rs: </string>
+    <string name="dancer_dnd_m">M: </string>
+    <string name="dancer_dnd_s">S: </string>
+    <string name="dancer_dnd_ch">Ch: </string>
+
+    <string name="dancer_classic_e">E: </string>
+    <string name="dancer_classic_d">D: </string>
+    <string name="dancer_classic_c">C: </string>
+    <string name="dancer_classic_b">B: </string>
+    <string name="dancer_classic_a">A: </string>
+    <string name="search_input_number">номер танцора</string>
+    <string name="app_main_name">Hustle App</string>
+    <string name="player">Плеер</string>
+</resources>
