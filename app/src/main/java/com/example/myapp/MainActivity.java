@@ -26,7 +26,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        Button metronomeButton = (Button) findViewById(R.id.btn_player);
+        Button metronomeButton = (Button) findViewById(R.id.btn_metronome);
         metronomeButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -43,7 +43,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 try {
-                    Intent intent = new Intent(MainActivity.this, PlayerActivity.class);
+                    Intent intent = new Intent(MainActivity.this, RecorderActivity.class);
                     startActivity(intent);
                     finish();
                 } catch (Exception e) { }

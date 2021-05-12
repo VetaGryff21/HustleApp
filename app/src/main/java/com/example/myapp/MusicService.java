@@ -85,6 +85,7 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
         Song playSong = songs.get(songPosn);
         songTitle=playSong.getTitle();
         long currSong = playSong.getID();
+        MusicAnalyzer musicAnalyzer = null;
 
         Uri trackUri = ContentUris.withAppendedId(
                 android.provider.MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
@@ -96,6 +97,7 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
             Log.e("MUSIC SERVICE", "Error setting data source", e);
         }
         player.prepareAsync();
+        musicAnalyzer.Analyze(player);
     }
 
     public void setSong(int songIndex){

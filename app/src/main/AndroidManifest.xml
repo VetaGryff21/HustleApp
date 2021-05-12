@@ -7,6 +7,10 @@
     <permission android:name="android.permission.MEDIA_CONTENT_CONTROL" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+
 
     <application
         android:allowBackup="true"
@@ -50,6 +54,10 @@
             android:screenOrientation="portrait">
         </activity>
 
+        <activity
+            android:name=".RecorderActivity"
+            android:screenOrientation="portrait">
+        </activity>
     </application>
 
 </manifest>
