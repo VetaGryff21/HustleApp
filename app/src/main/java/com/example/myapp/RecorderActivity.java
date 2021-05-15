@@ -39,20 +39,61 @@ public class RecorderActivity extends AppCompatActivity {
     int ix = 0;
 
 
+
+    static String LOG_TAG = "HustleApp logs";
+
+    private MediaRecorder recorder = null;
+    private String recordFile;
+
+
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.recorder_page);
 
-        requestRecordAudioPermission();
+        //requestRecordAudioPermission();
+        //createAudioRecorder();
+        //Log.d(TAG, "init state = " + audioRecord.getState());
 
+    private void startRecording() {
+        recorder = new MediaRecorder();
+        recorder.setAudioSource(MediaRecorder.AudioSource.MIC);
+        recorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
+        recorder.setOutputFile(recordFile);
+        recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
 
-        createAudioRecorder();
+        recordFile = this.getFilesDir().getAbsolutePath() + "/micrec.3gp";
+        View startPlay = findViewById(R.id.start_play);
+        View stopPlay = findViewById(R.id.stop_play);
+        View startRecord = findViewById(R.id.start_record);
+        View stopRecord = findViewById(R.id.stop_record);
 
-        Log.d(TAG, "init state = " + audioRecord.getState());
+        startRecord.setOnClickListener(v -> startRecording());
+        stopRecord.setOnClickListener(v -> stopRecording());
     }
 
-    private void requestRecordAudioPermission() {
+    private void startRecording() {
+        recorder = new MediaRecorder();
+        recorder.setAudioSource(MediaRecorder.AudioSource.MIC);
+        recorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
+        recorder.setOutputFile(recordFile);
+        recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
+
+        try {
+            recorder.prepare();
+        } catch (IOException e) {
+            Log.e(LOG_TAG, "prepare() failed");
+        }
+        recorder.start();
+    }
+
+    private void stopRecording() {
+        recorder.stop();
+        recorder.release();
+        recorder = null;
+    }
+
+    /*private void requestRecordAudioPermission() {
         //check API version, do nothing if API version < 23!
         int currentapiVersion = Build.VERSION.SDK_INT;
         if (currentapiVersion > Build.VERSION_CODES.LOLLIPOP){
@@ -167,7 +208,7 @@ public class RecorderActivity extends AppCompatActivity {
         audioRecord = findAudioRecord();
         if (audioRecord.getState() == AudioRecord.STATE_INITIALIZED){
             audioRecord.startRecording();
-            isRecording = true;
+            isRecording = true;*/
 //            try
 //            {
 //                int N = myBufferSize;
@@ -218,7 +259,7 @@ public class RecorderActivity extends AppCompatActivity {
 //                track.stop();
 //                track.release();
 //            }
-        }
+        /*}
 
         else{
             Log.e("SoundMeter", "ERROR, could not create audio recorder");
@@ -356,11 +397,7 @@ public class RecorderActivity extends AppCompatActivity {
         if (audioRecord != null) {
             audioRecord.release();
         }
-    }
-
-
-
-
+    }*/
 
 }
 
