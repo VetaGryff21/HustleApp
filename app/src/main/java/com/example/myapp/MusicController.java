@@ -11,11 +11,15 @@ public class MusicController extends MediaController {
         super(c);
     }
 
+    public OnBackPressedListener onBackPressedListener;
+
     @Override
     public boolean dispatchKeyEvent(KeyEvent event){
-        if (event.getKeyCode() == KeyEvent.KEYCODE_BACK) {
+        if (event.getKeyCode() == KeyEvent.KEYCODE_BACK && event.getAction() == KeyEvent.ACTION_UP) {
             super.hide();
-            ((Activity) getContext()).finish();
+            if(onBackPressedListener != null) {
+                onBackPressedListener.onBackPressed();
+            }
             return true;
         }
         return super.dispatchKeyEvent(event);
@@ -23,6 +27,7 @@ public class MusicController extends MediaController {
 
     public void hide(){}
 
-
-
+    interface OnBackPressedListener {
+        void onBackPressed();
+    }
 }
