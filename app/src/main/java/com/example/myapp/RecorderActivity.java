@@ -55,13 +55,6 @@ public class RecorderActivity extends AppCompatActivity {
         //createAudioRecorder();
         //Log.d(TAG, "init state = " + audioRecord.getState());
 
-    private void startRecording() {
-        recorder = new MediaRecorder();
-        recorder.setAudioSource(MediaRecorder.AudioSource.MIC);
-        recorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
-        recorder.setOutputFile(recordFile);
-        recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
-
         recordFile = this.getFilesDir().getAbsolutePath() + "/micrec.3gp";
         View startPlay = findViewById(R.id.start_play);
         View stopPlay = findViewById(R.id.stop_play);
