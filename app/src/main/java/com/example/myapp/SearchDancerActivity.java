@@ -1,20 +1,21 @@
 package com.example.myapp;
 
-import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.TextView;
+import android.widget.ListView;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.FragmentManager;
 
 import com.example.myapp.model.Dancer;
 import com.example.myapp.webservices.NetworkService;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -22,86 +23,66 @@ import retrofit2.Response;
 
 public class SearchDancerActivity extends AppCompatActivity {
 
+    private ArrayList<DancerUnit> dancerList;
+    private ListView dancerView;
+
     @Override
-    protected void onCreate(@Nullable Bundle savedInstanceState) {
+    protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.search_page);
+        setContentView(R.layout.searchdancer_page);
+        final EditText inputDancer = findViewById(R.id.search_input);
+        dancerView = (ListView) findViewById(R.id.dancer_list);
+
 
         Button searchDancer = (Button) findViewById(R.id.btn_searching);
         searchDancer.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                try {
-                    final EditText searchInput = findViewById(R.id.search_input);
-                    final TextView dancerName = findViewById(R.id.dancer_name);
-                    final TextView dancerClub = findViewById(R.id.dancer_club);
-                    final TextView dancerCode = findViewById(R.id.dancer_code);
-                    final TextView dancerClassE = findViewById(R.id.dancer_classic_e);
-                    final TextView dancerClassD = findViewById(R.id.dancer_classic_d);
-                    final TextView dancerClassC = findViewById(R.id.dancer_classic_c);
-                    final TextView dancerClassB = findViewById(R.id.dancer_classic_b);
-                    final TextView dancerClassA = findViewById(R.id.dancer_classic_a);
-                    final TextView dancerDndBg = findViewById(R.id.dancer_dnd_bg);
-                    final TextView dancerDndRs = findViewById(R.id.dancer_dnd_rs);
-                    final TextView dancerDndM = findViewById(R.id.dancer_dnd_m);
-                    final TextView dancerDndS = findViewById(R.id.dancer_dnd_s);
-                    final TextView dancerDndCh = findViewById(R.id.dancer_dnd_ch);
+                final String tmpName = inputDancer.getText().toString();
+                NetworkService.getInstance()
+                        .getJSONApi()
+                        .getDancersByFulname(tmpName)
+                        .enqueue(new Callback<List<Dancer>>(){
+                            @Override
+                            public void onResponse(@NonNull Call<List<Dancer>> call, @NonNull Response<List<Dancer>> response) {
 
-                    final String tmpCode = searchInput.getText().toString();
-                    NetworkService.getInstance()
-                            .getJSONApi()
-                            .getDancerByCode(tmpCode)
-                            .enqueue(new Callback<Dancer>() {
-                                @Override
-                                public void onResponse(@NonNull Call<Dancer> call, @NonNull Response<Dancer> response) {
-
-                                    if (response.code() == 404)
-                                    {
-                                        FragmentManager manager = getSupportFragmentManager();
-                                        MyDialogFragment myDialogFragment = new MyDialogFragment();
-                                        myDialogFragment.show(manager, "myDialog");
-                                        return;
-                                    }
-
-                                    Dancer post = response.body();
-
-                                    dancerName.setText(post.getFullname());
-                                    dancerClub.setText(post.getClub());
-                                    dancerCode.setText(post.getCode());
-                                    dancerClassE.setText(post.getE());
-                                    dancerClassD.setText(post.getD());
-                                    dancerClassC.setText(post.getC());
-                                    dancerClassB.setText(post.getB());
-                                    dancerClassA.setText(post.getA());
-                                    dancerDndBg.setText(post.getBg());
-                                    dancerDndRs.setText(post.getRs());
-                                    dancerDndM.setText(post.getM());
-                                    dancerDndS.setText(post.getS());
-                                    dancerDndCh.setText(post.getCh());
-                                }
-
-                                @Override
-                                public void onFailure(Call<Dancer> call, Throwable t) {
+                                if (response.code() == 404) {
                                     FragmentManager manager = getSupportFragmentManager();
                                     MyDialogFragment myDialogFragment = new MyDialogFragment();
                                     myDialogFragment.show(manager, "myDialog");
                                     return;
                                 }
-                            });
-                    } catch (Exception e) {
-                }
+
+                                List<Dancer> dancerList = response.body();
+                                if(!dancerList.isEmpty()) {
+                                    DancerUnitAdapter dancerUnitAdapter = new DancerUnitAdapter(v.getContext(), dancerList);
+                                    dancerView.setAdapter(dancerUnitAdapter);
+                                }
+                            }
+
+                            @Override
+                            public void onFailure(Call<List<Dancer>> call, Throwable t) {
+                                FragmentManager manager = getSupportFragmentManager();
+                                MyDialogFragment myDialogFragment = new MyDialogFragment();
+                                myDialogFragment.show(manager, "myDialog");
+                                return;
+                            }
+                        });
             }
         });
     }
 
+
+
+
     @Override
     public void onBackPressed() {
-        backActivity(SearchDancerActivity.this, MainActivity.class);
+        backActivity();
     }
 
-    private void backActivity(Object fromActivity, Object toActivity) {
+    private void backActivity() {
         try {
-            Intent intent = new Intent((Context) fromActivity, (Class<?>) toActivity);
+            Intent intent = new Intent(this, MainActivity.class);
             startActivity(intent);
             finish();
         } catch (Exception e) {

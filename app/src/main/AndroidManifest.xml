@@ -29,13 +29,13 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".ProfileActivity"
+        <activity android:name=".SearchDancerActivity"
             android:screenOrientation="portrait">
             <intent-filter>
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".SearchDancerActivity"
+        <activity android:name=".ProfileDancerActivity"
             android:screenOrientation="portrait">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -58,6 +58,7 @@
             android:name=".RecorderActivity"
             android:screenOrientation="portrait">
         </activity>
+
     </application>
 
 </manifest>
