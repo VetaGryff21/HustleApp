@@ -51,12 +51,21 @@ public class RecorderActivity extends AppCompatActivity {
 
     private static final int RECORDER_BPP = 16;
 
+
+    static String LOG_TAG = "HustleApp logs";
+
+    private MediaRecorder recorder = null;
+    private String recordFile;
+
+
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.recorder_page);
 
-        requestRecordAudioPermission();
+        //requestRecordAudioPermission();
+        //createAudioRecorder();
+        //Log.d(TAG, "init state = " + audioRecord.getState());
 
         recordPathWav = this.getFilesDir().getAbsolutePath() + "/micrec1.wav";
         View startPlay = findViewById(R.id.button3);
@@ -178,7 +187,6 @@ public class RecorderActivity extends AppCompatActivity {
         Log.i(LOG_TAG, "The audio file is ");
     }
 
-
     private void writeAudioDataToFile() throws IOException {
         byte[] data = new byte[bufferSize];
         FileOutputStream fos;
@@ -210,7 +218,6 @@ public class RecorderActivity extends AppCompatActivity {
                     }
                 }
             }
-
         }
 
         try {

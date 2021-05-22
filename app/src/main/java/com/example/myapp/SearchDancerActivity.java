@@ -3,6 +3,7 @@ package com.example.myapp;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ListView;
@@ -13,6 +14,7 @@ import androidx.fragment.app.FragmentManager;
 
 import com.example.myapp.model.Dancer;
 import com.example.myapp.webservices.NetworkService;
+import com.google.gson.Gson;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -57,6 +59,16 @@ public class SearchDancerActivity extends AppCompatActivity {
                                 if(!dancerList.isEmpty()) {
                                     DancerUnitAdapter dancerUnitAdapter = new DancerUnitAdapter(v.getContext(), dancerList);
                                     dancerView.setAdapter(dancerUnitAdapter);
+                                    dancerView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                                        public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                                            Dancer dancer = dancerList.get(position);
+                                            Intent intent = new Intent(SearchDancerActivity.this, ProfileDancerActivity.class);
+                                            String s = (new Gson().toJson(dancer));
+                                            intent.putExtra("DancerUnit", s);
+                                            startActivity(intent);
+                                        }
+                                    });
+
                                 }
                             }
 
@@ -71,9 +83,6 @@ public class SearchDancerActivity extends AppCompatActivity {
             }
         });
     }
-
-
-
 
     @Override
     public void onBackPressed() {
