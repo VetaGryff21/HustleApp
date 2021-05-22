@@ -2,16 +2,12 @@ package com.example.myapp;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
-import android.content.res.AssetFileDescriptor;
 import android.media.AudioFormat;
 import android.media.AudioRecord;
-import android.media.AudioTrack;
 import android.media.MediaPlayer;
 import android.media.MediaRecorder;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Environment;
-import android.os.Looper;
 import android.util.Log;
 import android.view.View;
 
@@ -19,240 +15,316 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.BufferedInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.RandomAccessFile;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 
+import static com.example.myapp.Constants.RECORD_ENCODING_BITRATE_48000;
+import static com.example.myapp.Constants.RECORD_SAMPLE_RATE_44100;
 
 public class RecorderActivity extends AppCompatActivity {
 
-    final String TAG = "myLogs";
-
-    int myBufferSize = 8192;
-    int myRate = 11025;
-    short myBTT = 16;
-//    AudioRecord audioRecord = null;
-    boolean isReading = false;
     boolean isRecording = false;
-    AudioRecord audioRecorder = null;
-    AudioTrack track = null;
-    String filename = "";
-    short[][]  buffers  = new short[256][160];
-    int ix = 0;
-    File myfile;
-    MediaPlayer mediaPlayer;
+    private String recordPathWav;
+    static String LOG_TAG = "HustleApp logs";
+    private int sampleRate;
+    private int channelCount;
+    File recordFile;
+    int channel;
+    int bufferSize;
+    AudioRecord recorder;
+    Thread recordingThread;
 
+    private String txtPath;
 
-    private final static int[] sampleRates = {44100, 22050, 16000, 11025, 8000};
-    protected int usedSampleRate;
+    private static final int RECORDER_BPP = 16;
 
-    public RecorderActivity() throws FileNotFoundException {
-    }
-
-    private class AudioThread extends Thread {
-        int numberOfReadBytes   = 0;
-        byte audioBuffer[]      = new  byte[myBufferSize];
-        boolean recording       = false;
-        float tempFloatBuffer[] = new float[3];
-        int tempIndex           = 0;
-        int totalReadBytes      = 0;
-        byte totalByteBuffer[]  = new byte[60 * 44100 * 2];
-
-
-        private final static String TAG = "AudioThread";
-
-        /**
-         * Give the thread high priority so that it's not canceled unexpectedly, and start it
-         */
-
-        @Override
-        public void run() {
-            Log.i(TAG, "Running Audio Thread");
-            if (Looper.myLooper() == null)
-            {
-                Looper.prepare();
-            }
-
-                float totalAbsValue = 0.0f;
-                short sample        = 0;
-
-                numberOfReadBytes = audioRecorder.read( audioBuffer, 0, myBufferSize );
-
-                // Analyze Sound.
-                for( int i=0; i<myBufferSize; i+=2 )
-                {
-                    sample = (short)( (audioBuffer[i]) | audioBuffer[i + 1] << 8 );
-                    if(numberOfReadBytes != 0) {
-                        totalAbsValue += Math.abs(sample) / (numberOfReadBytes / 2);
-                    }
-                }
-
-                // Analyze temp buffer.
-                tempFloatBuffer[tempIndex%3] = totalAbsValue;
-                float temp                   = 0.0f;
-                for( int i=0; i<3; ++i )
-                    temp += tempFloatBuffer[i];
-
-                if( (temp >=0 && temp <= 350) && recording == false )
-                {
-                    Log.i("TAG", "1");
-                    tempIndex++;
-                }
-
-                if( temp > 350 && recording == false )
-                {
-                    Log.i("TAG", "2");
-                    recording = true;
-                }
-
-                if( (temp >= 0 && temp <= 350) && recording == true )
-                {
-                    Log.i("TAG", "Save audio to file.");
-
-                    // Save audio to file.
-                    String filepath = Environment.getExternalStorageDirectory().getPath();
-                    File file = new File(filepath,"AudioRecorder");
-                    if( !file.exists() )
-                        file.mkdirs();
-
-                    String fn = file.getAbsolutePath() + "/" + System.currentTimeMillis() + ".wav";
-                    filename = fn;
-
-                    long totalAudioLen  = 0;
-                    long totalDataLen   = totalAudioLen + 36;
-                    long longSampleRate = myRate;
-                    int channels        = 1;
-                    long byteRate       = myBTT * myRate * channels/8;
-                    totalAudioLen       = totalReadBytes;
-                    totalDataLen        = totalAudioLen + 36;
-                    byte finalBuffer[]  = new byte[totalReadBytes + 44];
-
-                    finalBuffer[0] = 'R';  // RIFF/WAVE header
-                    finalBuffer[1] = 'I';
-                    finalBuffer[2] = 'F';
-                    finalBuffer[3] = 'F';
-                    finalBuffer[4] = (byte) (totalDataLen & 0xff);
-                    finalBuffer[5] = (byte) ((totalDataLen >> 8) & 0xff);
-                    finalBuffer[6] = (byte) ((totalDataLen >> 16) & 0xff);
-                    finalBuffer[7] = (byte) ((totalDataLen >> 24) & 0xff);
-                    finalBuffer[8] = 'W';
-                    finalBuffer[9] = 'A';
-                    finalBuffer[10] = 'V';
-                    finalBuffer[11] = 'E';
-                    finalBuffer[12] = 'f';  // 'fmt ' chunk
-                    finalBuffer[13] = 'm';
-                    finalBuffer[14] = 't';
-                    finalBuffer[15] = ' ';
-                    finalBuffer[16] = 16;  // 4 bytes: size of 'fmt ' chunk
-                    finalBuffer[17] = 0;
-                    finalBuffer[18] = 0;
-                    finalBuffer[19] = 0;
-                    finalBuffer[20] = 1;  // format = 1
-                    finalBuffer[21] = 0;
-                    finalBuffer[22] = (byte) channels;
-                    finalBuffer[23] = 0;
-                    finalBuffer[24] = (byte) (longSampleRate & 0xff);
-                    finalBuffer[25] = (byte) ((longSampleRate >> 8) & 0xff);
-                    finalBuffer[26] = (byte) ((longSampleRate >> 16) & 0xff);
-                    finalBuffer[27] = (byte) ((longSampleRate >> 24) & 0xff);
-                    finalBuffer[28] = (byte) (byteRate & 0xff);
-                    finalBuffer[29] = (byte) ((byteRate >> 8) & 0xff);
-                    finalBuffer[30] = (byte) ((byteRate >> 16) & 0xff);
-                    finalBuffer[31] = (byte) ((byteRate >> 24) & 0xff);
-                    finalBuffer[32] = (byte) (2 * 16 / 8);  // block align
-                    finalBuffer[33] = 0;
-                    finalBuffer[34] = 16;  // bits per sample
-                    finalBuffer[35] = 0;
-                    finalBuffer[36] = 'd';
-                    finalBuffer[37] = 'a';
-                    finalBuffer[38] = 't';
-                    finalBuffer[39] = 'a';
-                    finalBuffer[40] = (byte) (totalAudioLen & 0xff);
-                    finalBuffer[41] = (byte) ((totalAudioLen >> 8) & 0xff);
-                    finalBuffer[42] = (byte) ((totalAudioLen >> 16) & 0xff);
-                    finalBuffer[43] = (byte) ((totalAudioLen >> 24) & 0xff);
-
-                    for( int i=0; i<totalReadBytes; ++i )
-                        finalBuffer[44+i] = totalByteBuffer[i];
-
-                    FileOutputStream out;
-                    try {
-                        out = new FileOutputStream(fn);
-                        try {
-                            out.write(finalBuffer);
-                            out.close();
-                        } catch (IOException e) {
-                            // TODO Auto-generated catch block
-                            e.printStackTrace();
-                        }
-
-                    } catch (FileNotFoundException e1) {
-                        // TODO Auto-generated catch block
-                        e1.printStackTrace();
-                    }
-                    tempIndex++;
-                }
-
-                // -> Recording sound here.
-                Log.i( "TAG", "Recording Sound." );
-                for( int i=0; i<numberOfReadBytes; i++ )
-                    totalByteBuffer[totalReadBytes + i] = audioBuffer[i];
-                totalReadBytes += numberOfReadBytes;
-
-                tempIndex++;
-                // audioRecorder became null since it was canceled
-            Looper.loop();
-        }
-    }
-
-
-//    FileOutputStream fOut = openFileOutput("samplefile", MODE_PRIVATE);
-//    OutputStreamWriter osw = new OutputStreamWriter(fOut);
-
-
-    private AudioThread audioThread;
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.recorder_page);
 
         requestRecordAudioPermission();
-        //if(!targetFile.exists()) {
-//            try {
-//                audioThread = new AudioThread();
-//            } catch (IOException e) {
-//                e.printStackTrace();
-//            }
-        //}
 
+        recordPathWav = this.getFilesDir().getAbsolutePath() + "/micrec1.wav";
+        View startPlay = findViewById(R.id.button3);
+        View stopPlay = findViewById(R.id.button4);
+        View startRecord = findViewById(R.id.button1);
+        View stopRecord = findViewById(R.id.button2);
 
-//        createAudioRecorder();
+        startRecord.setOnClickListener(v -> {
+            try {
+                startRecording(recordPathWav, RECORD_ENCODING_BITRATE_48000);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        });
+        stopRecord.setOnClickListener(v -> {
+            try {
+                stopRecording();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        });
 
-//        Log.d(TAG, "init state = " + audioRecord.getState());
+    }
+
+    public void startRecording(String outputFile, int bitrate) throws IOException {
+        sampleRate = RECORD_SAMPLE_RATE_44100;
+        channelCount = 1;
+        recordFile = new File(outputFile);
+        if (recordFile.createNewFile()) {
+            Log.d(LOG_TAG, "File created: " + recordFile.getName());
+        } else {
+            Log.d(LOG_TAG, "File already exists.");
+        }
+
+        if (recordFile.exists() && recordFile.isFile()) {
+            channel = channelCount == 1 ? AudioFormat.CHANNEL_IN_MONO : AudioFormat.CHANNEL_IN_STEREO;
+            try {
+                bufferSize = AudioRecord.getMinBufferSize(sampleRate,
+                        channel,
+                        AudioFormat.ENCODING_PCM_16BIT);
+                if (bufferSize == AudioRecord.ERROR || bufferSize == AudioRecord.ERROR_BAD_VALUE) {
+                    bufferSize = AudioRecord.getMinBufferSize(sampleRate,
+                            channel,
+                            AudioFormat.ENCODING_PCM_16BIT);
+                }
+                recorder = new AudioRecord(
+                        MediaRecorder.AudioSource.MIC,
+                        sampleRate,
+                        channel,
+                        AudioFormat.ENCODING_PCM_16BIT,
+                        bufferSize
+                );
+            } catch (IllegalArgumentException e) {
+                Log.e(LOG_TAG, "sampleRate = " + sampleRate + " channel = " + channel + " bufferSize = " + bufferSize);
+                if (recorder != null) {
+                    recorder.release();
+                }
+            }
+            if (recorder != null && recorder.getState() == AudioRecord.STATE_INITIALIZED) {
+                recorder.startRecording();
+                isRecording = true;
+
+                recordingThread = new Thread(() -> {
+                    try {
+                        writeAudioDataToFile();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                    Log.d(LOG_TAG, "Thread Running");
+                });
+                recordingThread.start();
+            } else {
+                Log.e(LOG_TAG, "prepare() failed");
+            }
+        } else {
+            Log.e(LOG_TAG, "file failed");
+        }
     }
 
 
+    private void playRec() throws IOException {
+        MediaPlayer mediaPlayer = new MediaPlayer();
+        mediaPlayer.setDataSource(recordPathWav);
+        mediaPlayer.prepare();
+        mediaPlayer.start();
+        write_audio_file_to_txt();
+    }
+
+    public void write_audio_file_to_txt() {
+        try {
+            File f = new File(recordPathWav);
+            InputStream in = new BufferedInputStream(new FileInputStream(f));
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+            int read;
+            byte[] buff = new byte[1024];
+            while ((read = in.read(buff)) > 0) {
+                out.write(buff, 0, read);
+            }
+            out.flush();
+
+            byte[] audioBytes = out.toByteArray();
+            txtPath = this.getFilesDir().getAbsolutePath() + "/debugdata.txt";
+            File txtFile = new File(txtPath);
+            if (txtFile.createNewFile()) {
+                Log.i(LOG_TAG, "File created: " + txtFile.getName());
+            } else {
+                Log.i(LOG_TAG, "File already exists.");
+            }
+
+            FileWriter myWriter = new FileWriter(txtPath);
+            for (byte audioByte : audioBytes) {
+                myWriter.write(audioByte + " ");
+            }
+            myWriter.close();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        Log.i(LOG_TAG, "The audio file is ");
+    }
+
+
+    private void writeAudioDataToFile() throws IOException {
+        byte[] data = new byte[bufferSize];
+        FileOutputStream fos;
+        try {
+            fos = new FileOutputStream(recordFile);
+        } catch (FileNotFoundException e) {
+            Log.e(LOG_TAG, e.toString());
+            fos = null;
+        }
+        if (null != fos) {
+            int chunksCount = 0;
+            ByteBuffer shortBuffer = ByteBuffer.allocate(2);
+            shortBuffer.order(ByteOrder.LITTLE_ENDIAN);
+            while (isRecording) {
+                chunksCount += recorder.read(data, 0, bufferSize);
+                if (AudioRecord.ERROR_INVALID_OPERATION != chunksCount) {
+                    long sum = 0;
+                    for (int i = 0; i < bufferSize; i += 2) {
+                        shortBuffer.put(data[i]);
+                        shortBuffer.put(data[i + 1]);
+                        sum += Math.abs(shortBuffer.getShort(0));
+                        shortBuffer.clear();
+                    }
+                    try {
+                        fos.write(data);
+                    } catch (IOException e) {
+                        Log.e(LOG_TAG, e.toString());
+                        stopRecording();
+                    }
+                }
+            }
+
+        }
+
+        try {
+            if (fos != null) {
+                fos.close();
+            }
+        } catch (IOException e) {
+            Log.e(LOG_TAG, e.toString());
+        }
+        setWaveFileHeader(recordFile, channelCount);
+    }
+
+    private void setWaveFileHeader(File file, int channels) {
+        long fileSize = file.length() - 8;
+        long totalSize = fileSize + 36;
+        long byteRate = sampleRate * channels * (RECORDER_BPP/8); //2 byte per 1 sample for 1 channel.
+
+        try {
+            final RandomAccessFile wavFile = randomAccessFile(file);
+            wavFile.seek(0); // to the beginning
+            wavFile.write(generateHeader(fileSize, totalSize, sampleRate, channels, byteRate));
+            wavFile.close();
+        } catch (IOException e) {
+            Log.e(LOG_TAG, e.toString());
+        }
+    }
+
+
+    public void stopRecording() throws IOException {
+        if (recorder != null) {
+            isRecording = false;
+            if (recorder.getState() == AudioRecord.STATE_INITIALIZED) {
+                try {
+                    recorder.stop();
+                } catch (IllegalStateException e) {
+                    Log.e(LOG_TAG, "stopRecording() problems");
+                }
+            }
+            recorder.release();
+            recordingThread.interrupt();
+        }
+        playRec();
+    }
+
+
+    private RandomAccessFile randomAccessFile(File file) {
+        RandomAccessFile randomAccessFile;
+        try {
+            randomAccessFile = new RandomAccessFile(file, "rw");
+        } catch (FileNotFoundException e) {
+            throw new RuntimeException(e);
+        }
+        return randomAccessFile;
+    }
+
+    private byte[] generateHeader(
+            long totalAudioLen, long totalDataLen, long longSampleRate, int channels,
+            long byteRate) {
+
+        byte[] header = new byte[44];
+
+        header[0] = 'R'; // RIFF/WAVE header
+        header[1] = 'I';
+        header[2] = 'F';
+        header[3] = 'F';
+        header[4] = (byte) (totalDataLen & 0xff);
+        header[5] = (byte) ((totalDataLen >> 8) & 0xff);
+        header[6] = (byte) ((totalDataLen >> 16) & 0xff);
+        header[7] = (byte) ((totalDataLen >> 24) & 0xff);
+        header[8] = 'W';
+        header[9] = 'A';
+        header[10] = 'V';
+        header[11] = 'E';
+        header[12] = 'f'; // 'fmt ' chunk
+        header[13] = 'm';
+        header[14] = 't';
+        header[15] = ' ';
+        header[16] = 16; //16 for PCM. 4 bytes: size of 'fmt ' chunk
+        header[17] = 0;
+        header[18] = 0;
+        header[19] = 0;
+        header[20] = 1; // format = 1
+        header[21] = 0;
+        header[22] = (byte) channels;
+        header[23] = 0;
+        header[24] = (byte) (longSampleRate & 0xff);
+        header[25] = (byte) ((longSampleRate >> 8) & 0xff);
+        header[26] = (byte) ((longSampleRate >> 16) & 0xff);
+        header[27] = (byte) ((longSampleRate >> 24) & 0xff);
+        header[28] = (byte) (byteRate & 0xff);
+        header[29] = (byte) ((byteRate >> 8) & 0xff);
+        header[30] = (byte) ((byteRate >> 16) & 0xff);
+        header[31] = (byte) ((byteRate >> 24) & 0xff);
+        header[32] = (byte) (channels * (RECORDER_BPP/8)); // block align
+        header[33] = 0;
+        header[34] = RECORDER_BPP; // bits per sample
+        header[35] = 0;
+        header[36] = 'd';
+        header[37] = 'a';
+        header[38] = 't';
+        header[39] = 'a';
+        header[40] = (byte) (totalAudioLen & 0xff);
+        header[41] = (byte) ((totalAudioLen >> 8) & 0xff);
+        header[42] = (byte) ((totalAudioLen >> 16) & 0xff);
+        header[43] = (byte) ((totalAudioLen >> 24) & 0xff);
+        return header;
+    }
+
     private void requestRecordAudioPermission() {
-        //check API version, do nothing if API version < 23!
+        //check API version, do nothing if API version < 23
         int currentapiVersion = Build.VERSION.SDK_INT;
         if (currentapiVersion > Build.VERSION_CODES.LOLLIPOP){
-
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-
-                // Should we show an explanation?
-                if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.RECORD_AUDIO)) {
-
-                    // Show an expanation to the user *asynchronously* -- don't block
-                    // this thread waiting for the user's response! After the user
-                    // sees the explanation, try again to request the permission.
-
-                } else {
-
-                    // No explanation needed, we can request the permission.
-
+                if (!ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.RECORD_AUDIO)) {
                     ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.RECORD_AUDIO}, 1);
                 }
             }
@@ -260,262 +332,26 @@ public class RecorderActivity extends AppCompatActivity {
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
-        switch (requestCode) {
-            case 1: {
-                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    Log.d("Activity", "Granted!");
-                } else {
-                    Log.d("Activity", "Denied!");
-                    finish();
-                }
-                return;
+    public void onRequestPermissionsResult(int requestCode, String @NotNull [] permissions, int @NotNull [] grantResults) {
+        if (requestCode == 1) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Log.d("Activity", "Granted!");
+            } else {
+                Log.d("Activity", "Denied!");
+                finish();
             }
         }
     }
-
-
-
-
-    private int minSize;
-    private static int[] mSampleRates = new int[] { 8000, 11025, 22050, 32000, 44100 };
-
-    public AudioRecord findAudioRecord() {
-        for (int rate : mSampleRates) {
-            for (short audioFormat : new short[] { AudioFormat.ENCODING_PCM_8BIT, AudioFormat.ENCODING_PCM_16BIT, AudioFormat.ENCODING_PCM_FLOAT }) {
-                for (short channelConfig : new short[] { AudioFormat.CHANNEL_IN_MONO, AudioFormat.CHANNEL_IN_STEREO }) {
-                    try {
-                        Log.d("SoundMeter", "Attempting rate " + rate + "Hz, bits: " + audioFormat + ", channel: " + channelConfig);
-                        int bufferSize = AudioRecord.getMinBufferSize(rate, channelConfig, audioFormat);
-
-                        if (bufferSize != AudioRecord.ERROR_BAD_VALUE) {
-                            // check if we can instantiate and have a success
-                            Log.d("SoundMeter", "Found a supported bufferSize, attempting to instantiate");
-                            AudioRecord recorder = new AudioRecord(MediaRecorder.AudioSource.MIC, rate, channelConfig, audioFormat, bufferSize);
-
-                            if (recorder.getState() == AudioRecord.STATE_INITIALIZED){
-                                minSize = bufferSize;
-                                myRate = rate;
-                                myBTT = audioFormat;
-                                return recorder;
-                            }
-                            else
-                                recorder.release();
-                        }
-                    } catch (Exception e) {
-                        Log.e("SoundMeter", rate + " Exception, keep trying.", e);
-                    }
-                }
-            }
-        }
-        return null;
-    }
-
-
-    void createAudioRecorder() {
-        int sampleRate = 11025;
-        int channelConfig = AudioFormat.CHANNEL_IN_MONO;
-        int audioFormat = AudioFormat.ENCODING_PCM_16BIT;
-
-        try {
-
-            int bufferSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat);
-//            audioRecord = new AudioRecord(MediaRecorder.AudioSource.DEFAULT, sampleRate, channelConfig, audioFormat, bufferSize);
-//
-//            if (audioRecord.getState() == AudioRecord.STATE_INITIALIZED){
-//
-//                Log.d(TAG, "--------------!");
-//
-//            }
-//            else {
-//                Log.e(TAG, "Initialisation failed !");
-//            }
-
-        } catch (Exception e) {
-            Log.i("AudioRecording", "Error in Audio Record");
-        }
-    }
-
-    public void recordStart(View v) {
-        Log.d(TAG, "record start");
-        isRecording = true;
-        audioRecorder = findAudioRecord();
-        audioThread = new AudioThread();
-        audioThread.run();
-
-        // While data come from microphone.
-
-        //audioThread.run();
-
-//        audioRecord = findAudioRecord();
-//        if (audioRecord.getState() == AudioRecord.STATE_INITIALIZED){
-//            audioRecord.startRecording();
-//            isRecording = true;
-////            try
-////            {
-////                int N = myBufferSize;
-////                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-////                    track = new AudioTrack(
-////                            new AudioAttributes.Builder()
-////                                    .setUsage(AudioAttributes.USAGE_MEDIA)
-////                                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-////                                    .build(),
-////                            new AudioFormat.Builder()
-////                                    .setSampleRate(myRate)
-////                                    .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-////                                    .setChannelMask(AudioFormat.CHANNEL_OUT_MONO).build(),
-////                            myBufferSize,
-////                            AudioTrack.MODE_STREAM,
-////                            AudioManager.AUDIO_SESSION_ID_GENERATE);
-////                } else {
-////                    //support for Android KitKat
-////                    track = new AudioTrack(AudioManager.STREAM_MUSIC,
-////                            myRate,
-////                            AudioFormat.CHANNEL_OUT_MONO,
-////                            AudioFormat.ENCODING_PCM_16BIT,
-////                            myBufferSize,
-////                            AudioTrack.MODE_STREAM);
-////                }
-////
-////                track.play();
-////                /*
-////                 * Loops until something outside of this thread stops it.
-////                 * Reads the data from the recorder and writes it to the audio track for playback.
-////                 */
-////                    Log.i("Map", "Writing new data to buffer");
-////                    short[] buffer = buffers[ix++ % buffers.length];
-////                    N = audioRecord.read(buffer,0,buffer.length);
-////                    track.write(buffer, 0, buffer.length);
-////            }
-////            catch(Throwable x)
-////            {
-////                Log.w("Audio", "Error reading voice audio", x);
-////            }
-////            /*
-////             * Frees the thread's resources after the loop completes so that it can be run again
-////             */
-////            finally
-////            {
-////                audioRecord.stop();
-////                audioRecord.release();
-////                track.stop();
-////                track.release();
-////            }
-//        }
-//
-//        else{
-//            Log.e("SoundMeter", "ERROR, could not create audio recorder");
-//        }
-
-        //       int recordingState = audioRecord.getRecordingState();
-        //       Log.d(TAG, "recordingState = " + recordingState);
-    }
-
-
-    public void recordStop(View v) {
-        Log.d(TAG, "record stop");
-        isRecording = false;
-        if(audioThread.isAlive()) audioThread.interrupt();
-//        audioRecord.stop();
-//        audioRecord.release();
-//        isRecording = false;
-//        track.play();
-////        copyWaveFile(getTempFilename(),getFilename());
-////        deleteTempFile();
-    }
-//
-//    private void deleteTempFile() {
-//        File file = new File(getTempFilename());
-//        file.delete();
-//    }
-
 
     public void readStart(View v) {
-        Log.d(TAG, "read start");
-        isReading = true;
-
-//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-//            track = new AudioTrack(
-//                    new AudioAttributes.Builder()
-//                            .setUsage(AudioAttributes.USAGE_MEDIA)
-//                            .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-//                            .build(),
-//                    new AudioFormat.Builder()
-//                            .setSampleRate(myRate)
-//                            .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-//                            .setChannelMask(AudioFormat.CHANNEL_OUT_MONO).build(),
-//                    myBufferSize,
-//                    AudioTrack.MODE_STREAM,
-//                    AudioManager.AUDIO_SESSION_ID_GENERATE);
-//        } else {
-//
-//            track = new AudioTrack(AudioManager.STREAM_MUSIC,
-//                    myRate,
-//                    AudioFormat.CHANNEL_IN_STEREO,
-//                    AudioFormat.ENCODING_PCM_16BIT,
-//                    myBufferSize,
-//                    AudioTrack.MODE_STREAM);
-//        }
-        mediaPlayer = new MediaPlayer();
-        if(mediaPlayer.isPlaying())
-        {
-            mediaPlayer.stop();
-        }
-
-        try {
-            mediaPlayer.reset();
-            AssetFileDescriptor afd;
-            afd = getAssets().openFd(filename);
-            mediaPlayer.setDataSource(afd.getFileDescriptor(),afd.getStartOffset(),afd.getLength());
-            mediaPlayer.prepare();
-            mediaPlayer.start();
-        } catch (IllegalStateException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-//        new Thread(new Runnable() {
-//            @Override
-//            public void run() {
-//                if (audioRecord == null)
-//                    return;
-//
-//                byte[] myBuffer = new byte[myBufferSize];
-//                int readCount = 0;
-//                int totalCount = 0;
-//                while (isReading) {
-//                    readCount = audioRecord.read(myBuffer, 0, myBufferSize);
-//                    totalCount += readCount;
-//                    Log.d(TAG, "readCount = " + readCount + ", totalCount = "
-//                            + totalCount);
-//                    track.write(myBuffer, 0, myBuffer.length);
-//                }
-//            }
-//        }).start();
-
-
     }
 
-
     public void readStop(View v) {
-        Log.d(TAG, "read stop");
-//        track.play();
-//        isReading = false;
-////        Wave wave = new Wave(myRate,NUM_CHANNELS,outputSignal,0,outputSignal.length-1);
-////        if(wave.wroteToFile("your_filename.wav"))
-////            log("Click write successful.");
-////        else log("Click write failed.");
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-
-//        isReading = false;
-//        if (audioRecord != null) {
-//            audioRecord.release();
-//        }
     }
 }
 
