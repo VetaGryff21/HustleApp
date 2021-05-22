@@ -2,13 +2,9 @@ package com.example.myapp;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
-import android.media.AudioAttributes;
 import android.media.AudioFormat;
-import android.media.AudioManager;
 import android.media.AudioRecord;
-
 import android.media.MediaPlayer;
-
 import android.media.MediaRecorder;
 import android.os.Build;
 import android.os.Bundle;
@@ -54,11 +50,6 @@ public class RecorderActivity extends AppCompatActivity {
     private String txtPath;
 
     private static final int RECORDER_BPP = 16;
-
-    AudioTrack track = null;
-    short[][]   buffers  = new short[256][160];
-    int ix = 0;
-
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
