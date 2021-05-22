@@ -51,31 +51,25 @@ public class RecorderActivity extends AppCompatActivity {
 
     private static final int RECORDER_BPP = 16;
 
-
-    static String LOG_TAG = "HustleApp logs";
-
-    private MediaRecorder recorder = null;
-    private String recordFile;
-
-
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.recorder_page);
 
-        //requestRecordAudioPermission();
-        //createAudioRecorder();
-        //Log.d(TAG, "init state = " + audioRecord.getState());
+        requestRecordAudioPermission();
 
         recordPathWav = this.getFilesDir().getAbsolutePath() + "/micrec1.wav";
-        View startPlay = findViewById(R.id.button3);
-        View stopPlay = findViewById(R.id.button4);
-        View startRecord = findViewById(R.id.button1);
-        View stopRecord = findViewById(R.id.button2);
+        View startPlay = findViewById(R.id.start_play);
+        View stopPlay = findViewById(R.id.stop_play);
+        View startRecord = findViewById(R.id.start_record);
+        View stopRecord = findViewById(R.id.stop_record);
+        stopRecord.setEnabled(false);
 
         startRecord.setOnClickListener(v -> {
             try {
                 startRecording(recordPathWav, RECORD_ENCODING_BITRATE_48000);
+                startRecord.setEnabled(false);
+                stopRecord.setEnabled(true);
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -83,6 +77,8 @@ public class RecorderActivity extends AppCompatActivity {
         stopRecord.setOnClickListener(v -> {
             try {
                 stopRecording();
+                startRecord.setEnabled(true);
+                stopRecord.setEnabled(false);
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -130,7 +126,7 @@ public class RecorderActivity extends AppCompatActivity {
 
                 recordingThread = new Thread(() -> {
                     try {
-                        writeAudioDataToFile();
+                        writeAudioDataToWavFile();
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
@@ -187,7 +183,7 @@ public class RecorderActivity extends AppCompatActivity {
         Log.i(LOG_TAG, "The audio file is ");
     }
 
-    private void writeAudioDataToFile() throws IOException {
+    private void writeAudioDataToWavFile() throws IOException {
         byte[] data = new byte[bufferSize];
         FileOutputStream fos;
         try {
