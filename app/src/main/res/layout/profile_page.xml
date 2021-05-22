@@ -20,36 +20,9 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:orientation="vertical"
-            android:paddingHorizontal="10dp">
+            android:paddingHorizontal="10dp"
+            android:paddingTop="20dp">
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="86dp"
-                android:orientation="horizontal">
-
-                <com.google.android.material.textfield.TextInputLayout
-                    android:id="@+id/search_field"
-                    android:layout_weight="2"
-                    android:layout_height="match_parent"
-                    android:layout_width="0dp">
-
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/search_input"
-                        android:layout_width="match_parent"
-                        android:layout_height="66dp"
-                        android:hint="@string/search_input_number" />
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <Button
-                    android:id="@+id/btn_searching"
-                    android:layout_weight="1"
-                    android:layout_height="38dp"
-                    android:background="@drawable/btn_start"
-                    android:text="@string/search"
-                    android:textColor="@color/black95"
-                    android:layout_width="0dp" />
-
-            </LinearLayout>
 
             <LinearLayout
                 android:id="@+id/container1"
