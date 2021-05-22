@@ -30,4 +30,8 @@
     <string name="search_input_number">номер танцора</string>
     <string name="app_main_name">Hustle App</string>
     <string name="player">Плеер</string>
+    <string name="input_dancer_fullname">ФИО танцора</string>
+    <string name="search_by_code">по коду</string>
+    <string name="search_by_name">по имени</string>
+    <string name="search_by_club">по клубу</string>
 </resources>

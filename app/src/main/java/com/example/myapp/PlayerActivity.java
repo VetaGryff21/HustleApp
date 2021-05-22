@@ -1,5 +1,6 @@
 package com.example.myapp;
 
+import android.app.Activity;
 import android.content.ComponentName;
 import android.content.ContentResolver;
 import android.content.Context;
@@ -150,6 +151,13 @@ public class PlayerActivity extends AppCompatActivity implements MediaPlayerCont
         controller.setMediaPlayer(this);
         controller.setAnchorView(findViewById(R.id.song_list));
         controller.setEnabled(true);
+
+        controller.onBackPressedListener = new MusicController.OnBackPressedListener() {
+            @Override
+            public void onBackPressed() {
+                backActivity();
+            }
+        };
     }
 
     @Override
@@ -266,12 +274,12 @@ public class PlayerActivity extends AppCompatActivity implements MediaPlayerCont
 
     @Override
     public void onBackPressed() {
-        backActivity(PlayerActivity.this, MainActivity.class);
+        backActivity();
     }
 
-    private void backActivity(Object fromActivity, Object toActivity) {
+    private void backActivity() {
         try {
-            Intent intent = new Intent((Context) fromActivity, (Class<?>) toActivity);
+            Intent intent = new Intent(this, MainActivity.class);
             startActivity(intent);
             finish();
         } catch (Exception e) {
