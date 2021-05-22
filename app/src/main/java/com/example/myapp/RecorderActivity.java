@@ -8,6 +8,8 @@ import android.media.MediaPlayer;
 import android.media.MediaRecorder;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.view.View;
 
@@ -46,6 +48,7 @@ public class RecorderActivity extends AppCompatActivity {
     int bufferSize;
     AudioRecord recorder;
     Thread recordingThread;
+    Handler h;
 
     private String txtPath;
 
@@ -57,6 +60,7 @@ public class RecorderActivity extends AppCompatActivity {
         setContentView(R.layout.recorder_page);
 
         requestRecordAudioPermission();
+        h = new Handler(Looper.getMainLooper());
 
         recordPathWav = this.getFilesDir().getAbsolutePath() + "/micrec1.wav";
         View startPlay = findViewById(R.id.start_play);
@@ -70,20 +74,37 @@ public class RecorderActivity extends AppCompatActivity {
                 startRecording(recordPathWav, RECORD_ENCODING_BITRATE_48000);
                 startRecord.setEnabled(false);
                 stopRecord.setEnabled(true);
+
+                Runnable r = () -> {
+                    try {
+                        startRecord.setEnabled(true);
+                        stopRecord.setEnabled(false);
+                        stopRecording();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                };
+                h.postDelayed(r, 5000);
             } catch (IOException e) {
                 e.printStackTrace();
             }
         });
         stopRecord.setOnClickListener(v -> {
             try {
-                stopRecording();
                 startRecord.setEnabled(true);
                 stopRecord.setEnabled(false);
+                stopRecording();
             } catch (IOException e) {
                 e.printStackTrace();
             }
         });
 
+    }
+
+    @Override
+    protected void onPause() {
+        h.removeCallbacksAndMessages(null);
+        super.onPause();
     }
 
     public void startRecording(String outputFile, int bitrate) throws IOException {
@@ -140,7 +161,6 @@ public class RecorderActivity extends AppCompatActivity {
             Log.e(LOG_TAG, "file failed");
         }
     }
-
 
     private void playRec() throws IOException {
         MediaPlayer mediaPlayer = new MediaPlayer();
@@ -355,6 +375,7 @@ public class RecorderActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        h.removeCallbacksAndMessages(null);
     }
 }
 
