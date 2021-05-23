@@ -12,6 +12,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 import android.view.View;
+import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
@@ -49,6 +50,7 @@ public class RecorderActivity extends AppCompatActivity {
     AudioRecord recorder;
     Thread recordingThread;
     Handler h;
+    TextView countClap;
 
     private String txtPath;
 
@@ -67,6 +69,7 @@ public class RecorderActivity extends AppCompatActivity {
         View stopPlay = findViewById(R.id.stop_play);
         View startRecord = findViewById(R.id.start_record);
         View stopRecord = findViewById(R.id.stop_record);
+        countClap = findViewById(R.id.textinput_counter);
         stopRecord.setEnabled(false);
 
         startRecord.setOnClickListener(v -> {
@@ -94,6 +97,7 @@ public class RecorderActivity extends AppCompatActivity {
                 startRecord.setEnabled(true);
                 stopRecord.setEnabled(false);
                 stopRecording();
+                h.removeCallbacksAndMessages(null);
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -108,6 +112,7 @@ public class RecorderActivity extends AppCompatActivity {
     }
 
     public void startRecording(String outputFile, int bitrate) throws IOException {
+        countClap.setText("");
         sampleRate = RECORD_SAMPLE_RATE_44100;
         channelCount = 1;
         recordFile = new File(outputFile);
@@ -192,15 +197,75 @@ public class RecorderActivity extends AppCompatActivity {
                 Log.i(LOG_TAG, "File already exists.");
             }
 
-            FileWriter myWriter = new FileWriter(txtPath);
-            for (byte audioByte : audioBytes) {
-                myWriter.write(audioByte + " ");
+//---------- to Int array
+            int lenAudioBytes = audioBytes.length;
+            int lenNewIntAudioBytes = lenAudioBytes / 2;
+            int[] newIntAudioBytes = new int[lenNewIntAudioBytes];
+            for (int i = 1, j = 0; i < lenAudioBytes-1; i = i+2, j++) {
+                newIntAudioBytes[j] = ((int) audioBytes[i])*256 + ((int) audioBytes[i+1]);
             }
-            myWriter.close();
+//---------- to array without header and nulls
+            int lenHeader = 0;
+            for (int i = 22; i < lenNewIntAudioBytes; i++) {
+                if(newIntAudioBytes[i] != 0){
+                    lenHeader = i;
+                    break;
+                }
+            }
+
+            int lenNewArrayWithoutNulls = lenNewIntAudioBytes - lenHeader;
+            int[] newArrayWithoutNulls = new int[lenNewArrayWithoutNulls];
+            for (int i = 0, j = lenHeader; j < lenNewIntAudioBytes-1; i++, j++) {
+                newArrayWithoutNulls[i] = newIntAudioBytes[j];
+            }
+            printArrayToFile(newArrayWithoutNulls);
+
+//---------- analyzer
+            int size = newArrayWithoutNulls.length;
+            int fragmentsize = 10000;
+            int counter = 0;
+            int jump = 1000;
+
+            int max, min;
+            int size2 = size - fragmentsize;
+
+            for (int i = 0; i < size2; i = i + fragmentsize) {
+                max = 0;
+                min = 500000;
+                for (int j = i; j < i + fragmentsize; j++) {
+                    if(Math.abs(newArrayWithoutNulls[j]) > max)
+                        max = Math.abs(newArrayWithoutNulls[j]);
+                    if(Math.abs(newArrayWithoutNulls[j]) < min)
+                        min = Math.abs(newArrayWithoutNulls[j]);
+                }
+                if(max - min > jump)
+                    counter++;
+                Log.d(LOG_TAG, "---- " + min + "---- " + max);
+            }
+
+            countClap.setText("я думаю, количество ударов = " + counter);
+            Log.d(LOG_TAG, "----I-------I------I----- " + counter);
+
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
         Log.i(LOG_TAG, "The audio file is ");
+    }
+
+    private void printArrayToFile(int[] array) throws IOException {
+        FileWriter myWriter = new FileWriter(txtPath+"1");
+        for (int audioInt : array) {
+            myWriter.write(audioInt + " ");
+        }
+        myWriter.close();
+    }
+
+    private void printArrayToFile(byte[] array) throws IOException {
+        FileWriter myWriter = new FileWriter(txtPath+"1");
+        for (int audioInt : array) {
+            myWriter.write(audioInt + " ");
+        }
+        myWriter.close();
     }
 
     private void writeAudioDataToWavFile() throws IOException {
