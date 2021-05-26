@@ -12,6 +12,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 import android.view.View;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -50,7 +51,12 @@ public class RecorderActivity extends AppCompatActivity {
     AudioRecord recorder;
     Thread recordingThread;
     Handler h;
-    TextView countClap;
+    TextView countClap1;
+    TextView countClap2;
+    TextView countClap3;
+    MusicAnalyzer analyzer;
+    int fileCounter;
+    int recordTime = 5000;
 
     private String txtPath;
 
@@ -63,45 +69,51 @@ public class RecorderActivity extends AppCompatActivity {
 
         requestRecordAudioPermission();
         h = new Handler(Looper.getMainLooper());
+        fileCounter = 0;
 
         recordPathWav = this.getFilesDir().getAbsolutePath() + "/micrec1.wav";
-        View startPlay = findViewById(R.id.start_play);
-        View stopPlay = findViewById(R.id.stop_play);
         View startRecord = findViewById(R.id.start_record);
-        View stopRecord = findViewById(R.id.stop_record);
-        countClap = findViewById(R.id.textinput_counter);
-        stopRecord.setEnabled(false);
+        countClap1 = findViewById(R.id.textinput_1);
+        countClap2 = findViewById(R.id.textinput_2);
+        countClap3 = findViewById(R.id.textinput_3);
+        analyzer = new MusicAnalyzer();
+        ProgressBar progressBar = findViewById(R.id.progressBar);
+        progressBar.setVisibility(View.INVISIBLE);
 
         startRecord.setOnClickListener(v -> {
             try {
                 startRecording(recordPathWav, RECORD_ENCODING_BITRATE_48000);
                 startRecord.setEnabled(false);
-                stopRecord.setEnabled(true);
-
+                startRecord.setVisibility(View.INVISIBLE);
+                progressBar.setVisibility(View.VISIBLE);
+                countClap1.setText("Идет запись");
+                countClap2.setText("");
+                countClap3.setText("");
                 Runnable r = () -> {
                     try {
                         startRecord.setEnabled(true);
-                        stopRecord.setEnabled(false);
+                        startRecord.setVisibility(View.VISIBLE);
+                        progressBar.setVisibility(View.INVISIBLE);
                         stopRecording();
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
                 };
-                h.postDelayed(r, 5000);
+                h.postDelayed(r, recordTime);
             } catch (IOException e) {
                 e.printStackTrace();
             }
         });
-        stopRecord.setOnClickListener(v -> {
-            try {
-                startRecord.setEnabled(true);
-                stopRecord.setEnabled(false);
-                stopRecording();
-                h.removeCallbacksAndMessages(null);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        });
+//        stopRecord.setOnClickListener(v -> {
+//            try {
+//                startRecord.setEnabled(true);
+//                stopRecord.setEnabled(false);
+//                stopRecording();
+//                h.removeCallbacksAndMessages(null);
+//            } catch (IOException e) {
+//                e.printStackTrace();
+//            }
+//        });
 
     }
 
@@ -112,7 +124,7 @@ public class RecorderActivity extends AppCompatActivity {
     }
 
     public void startRecording(String outputFile, int bitrate) throws IOException {
-        countClap.setText("");
+        countClap1.setText("");
         sampleRate = RECORD_SAMPLE_RATE_44100;
         channelCount = 1;
         recordFile = new File(outputFile);
@@ -168,6 +180,7 @@ public class RecorderActivity extends AppCompatActivity {
     }
 
     private void playRec() throws IOException {
+        countClap2.setText("Идет анализ");
         MediaPlayer mediaPlayer = new MediaPlayer();
         mediaPlayer.setDataSource(recordPathWav);
         mediaPlayer.prepare();
@@ -189,7 +202,7 @@ public class RecorderActivity extends AppCompatActivity {
             out.flush();
 
             byte[] audioBytes = out.toByteArray();
-            txtPath = this.getFilesDir().getAbsolutePath() + "/debugdata.txt";
+            txtPath = this.getFilesDir().getAbsolutePath() + "/debugdata";
             File txtFile = new File(txtPath);
             if (txtFile.createNewFile()) {
                 Log.i(LOG_TAG, "File created: " + txtFile.getName());
@@ -197,12 +210,13 @@ public class RecorderActivity extends AppCompatActivity {
                 Log.i(LOG_TAG, "File already exists.");
             }
 
+            printArrayToFile(audioBytes);
 //---------- to Int array
             int lenAudioBytes = audioBytes.length;
             int lenNewIntAudioBytes = lenAudioBytes / 2;
             int[] newIntAudioBytes = new int[lenNewIntAudioBytes];
-            for (int i = 1, j = 0; i < lenAudioBytes-1; i = i+2, j++) {
-                newIntAudioBytes[j] = ((int) audioBytes[i])*256 + ((int) audioBytes[i+1]);
+            for (int i = 0, j = 0; i < lenAudioBytes-1; i = i+2, j++) {
+                newIntAudioBytes[j] = (((int) audioBytes[i+1]) << 8) | ((int) audioBytes[i]);
             }
 //---------- to array without header and nulls
             int lenHeader = 0;
@@ -220,31 +234,27 @@ public class RecorderActivity extends AppCompatActivity {
             }
             printArrayToFile(newArrayWithoutNulls);
 
-//---------- analyzer
-            int size = newArrayWithoutNulls.length;
-            int fragmentsize = 10000;
-            int counter = 0;
-            int jump = 1000;
-
-            int max, min;
-            int size2 = size - fragmentsize;
-
-            for (int i = 0; i < size2; i = i + fragmentsize) {
-                max = 0;
-                min = 500000;
-                for (int j = i; j < i + fragmentsize; j++) {
-                    if(Math.abs(newArrayWithoutNulls[j]) > max)
-                        max = Math.abs(newArrayWithoutNulls[j]);
-                    if(Math.abs(newArrayWithoutNulls[j]) < min)
-                        min = Math.abs(newArrayWithoutNulls[j]);
-                }
-                if(max - min > jump)
-                    counter++;
-                Log.d(LOG_TAG, "---- " + min + "---- " + max);
+            int lenInvertArray = lenNewArrayWithoutNulls;
+            int[] invertArray = new int[lenInvertArray];
+            for (int i = 0; i < lenInvertArray; i++) {
+                if(newArrayWithoutNulls[i] < 0)
+                    invertArray[i] = newArrayWithoutNulls[i]*(-1);
             }
+            printArrayToFile(invertArray);
+//---------- analyzer
 
-            countClap.setText("я думаю, количество ударов = " + counter);
-            Log.d(LOG_TAG, "----I-------I------I----- " + counter);
+
+//            SampleHistory sh = new SampleHistory(sampleRate, recordTime/1000);
+//            BPMDetect bpmDetect = new BPMDetect(sh, sampleRate, );
+
+            int resultAlgo1 = analyzer.Algo1(newArrayWithoutNulls);
+            int resultAlgo2 = analyzer.Algo2(invertArray);
+            int resultAlgo3 = analyzer.Algo3(invertArray);
+            int resultAlgo4 = analyzer.Algo4(newArrayWithoutNulls);
+            countClap1.setText("Алгоритм 1: " + resultAlgo1);
+            countClap2.setText("Алгоритм 2: " + resultAlgo2);
+            countClap3.setText("Алгоритм 3: " + resultAlgo3);
+
 
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -253,16 +263,17 @@ public class RecorderActivity extends AppCompatActivity {
     }
 
     private void printArrayToFile(int[] array) throws IOException {
-        FileWriter myWriter = new FileWriter(txtPath+"1");
+        FileWriter myWriter = new FileWriter(txtPath + "_" + fileCounter);
         for (int audioInt : array) {
             myWriter.write(audioInt + " ");
         }
         myWriter.close();
+        fileCounter++;
     }
 
     private void printArrayToFile(byte[] array) throws IOException {
-        FileWriter myWriter = new FileWriter(txtPath+"1");
-        for (int audioInt : array) {
+        FileWriter myWriter = new FileWriter(txtPath);
+        for (byte audioInt : array) {
             myWriter.write(audioInt + " ");
         }
         myWriter.close();
