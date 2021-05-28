@@ -21,6 +21,7 @@ import androidx.core.content.ContextCompat;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jtransforms.fft.FloatFFT_1D;
 
 import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
@@ -32,8 +33,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.RandomAccessFile;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 
 import static com.example.myapp.Constants.RECORD_ENCODING_BITRATE_48000;
 import static com.example.myapp.Constants.RECORD_SAMPLE_RATE_44100;
@@ -57,6 +56,8 @@ public class RecorderActivity extends AppCompatActivity {
     MusicAnalyzer analyzer;
     int fileCounter;
     int recordTime = 5000;
+    private SampleHistory sh;
+    private float[] shSamples;
 
     private String txtPath;
 
@@ -79,7 +80,9 @@ public class RecorderActivity extends AppCompatActivity {
         analyzer = new MusicAnalyzer();
         ProgressBar progressBar = findViewById(R.id.progressBar);
         progressBar.setVisibility(View.INVISIBLE);
-
+        sh = new SampleHistory(sampleRate,5);
+        int samplesize = RECORD_SAMPLE_RATE_44100 * 5;
+        shSamples = new float[samplesize];
         startRecord.setOnClickListener(v -> {
             try {
                 startRecording(recordPathWav, RECORD_ENCODING_BITRATE_48000);
@@ -104,17 +107,6 @@ public class RecorderActivity extends AppCompatActivity {
                 e.printStackTrace();
             }
         });
-//        stopRecord.setOnClickListener(v -> {
-//            try {
-//                startRecord.setEnabled(true);
-//                stopRecord.setEnabled(false);
-//                stopRecording();
-//                h.removeCallbacksAndMessages(null);
-//            } catch (IOException e) {
-//                e.printStackTrace();
-//            }
-//        });
-
     }
 
     @Override
@@ -123,6 +115,7 @@ public class RecorderActivity extends AppCompatActivity {
         super.onPause();
     }
 
+    int ind = 1;
     public void startRecording(String outputFile, int bitrate) throws IOException {
         countClap1.setText("");
         sampleRate = RECORD_SAMPLE_RATE_44100;
@@ -165,6 +158,7 @@ public class RecorderActivity extends AppCompatActivity {
                 recordingThread = new Thread(() -> {
                     try {
                         writeAudioDataToWavFile();
+                        ind = 1;
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
@@ -210,6 +204,13 @@ public class RecorderActivity extends AppCompatActivity {
                 Log.i(LOG_TAG, "File already exists.");
             }
 
+//---------- print float array
+            printArrayToFile(shSamples);
+//            printArrayToFile(sh.getFftSamples(FFT_BASS));
+//            printArrayToFile(sh.getFftSamples(FFT_MID));
+//            printArrayToFile(sh.getFftSamples(FFT_TREBLE));
+
+
             printArrayToFile(audioBytes);
 //---------- to Int array
             int lenAudioBytes = audioBytes.length;
@@ -243,10 +244,6 @@ public class RecorderActivity extends AppCompatActivity {
             printArrayToFile(invertArray);
 //---------- analyzer
 
-
-//            SampleHistory sh = new SampleHistory(sampleRate, recordTime/1000);
-//            BPMDetect bpmDetect = new BPMDetect(sh, sampleRate, );
-
             int resultAlgo1 = analyzer.Algo1(newArrayWithoutNulls);
             int resultAlgo2 = analyzer.Algo2(invertArray);
             int resultAlgo3 = analyzer.Algo3(invertArray);
@@ -279,6 +276,15 @@ public class RecorderActivity extends AppCompatActivity {
         myWriter.close();
     }
 
+    private void printArrayToFile(float[] array) throws IOException {
+        FileWriter myWriter = new FileWriter(txtPath + "-" + fileCounter);
+        for (float audioInt : array) {
+            myWriter.write(audioInt + " ");
+        }
+        myWriter.close();
+        fileCounter++;
+    }
+
     private void writeAudioDataToWavFile() throws IOException {
         byte[] data = new byte[bufferSize];
         FileOutputStream fos;
@@ -288,22 +294,29 @@ public class RecorderActivity extends AppCompatActivity {
             Log.e(LOG_TAG, e.toString());
             fos = null;
         }
+
+        float sample = 0;
+        float[] samples = sh.getSamples();
+        FloatFFT_1D fft = new FloatFFT_1D(1024);
+
         if (null != fos) {
             int chunksCount = 0;
-            ByteBuffer shortBuffer = ByteBuffer.allocate(2);
-            shortBuffer.order(ByteOrder.LITTLE_ENDIAN);
             while (isRecording) {
                 chunksCount += recorder.read(data, 0, bufferSize);
                 if (AudioRecord.ERROR_INVALID_OPERATION != chunksCount) {
-                    long sum = 0;
-                    for (int i = 0; i < bufferSize; i += 2) {
-                        shortBuffer.put(data[i]);
-                        shortBuffer.put(data[i + 1]);
-                        sum += Math.abs(shortBuffer.getShort(0));
-                        shortBuffer.clear();
-                    }
                     try {
+                        for (int i = 0; i < (data.length / 4); i++) {
+                            sample = data[i * 4 + 1] << 8 | (255 & data[i * 4]);
+                            samples[i] = sample;
+                        }
+                        Log.d(LOG_TAG, "= = = = = = = = = " + samples[10]);
                         fos.write(data);
+                        new Thread(new FFTer(fft, samples, sh)).start();
+                        int newind = samples.length * ind - samples.length;
+                        for (int i = newind, j = 0; i < samples.length * ind; i++, j++) {
+                            shSamples[i] = samples[j];
+                        }
+                        ind++;
                     } catch (IOException e) {
                         Log.e(LOG_TAG, e.toString());
                         stopRecording();
