@@ -59,6 +59,11 @@
             android:screenOrientation="portrait">
         </activity>
 
+        <activity
+            android:name=".MenuActivity"
+            android:screenOrientation="portrait">
+        </activity>
+
     </application>
 
 </manifest>
