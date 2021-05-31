@@ -36,6 +36,9 @@ import java.io.RandomAccessFile;
 
 import static com.example.myapp.Constants.RECORD_ENCODING_BITRATE_48000;
 import static com.example.myapp.Constants.RECORD_SAMPLE_RATE_44100;
+import static com.example.myapp.SampleHistory.FFT_BASS;
+import static com.example.myapp.SampleHistory.FFT_MID;
+import static com.example.myapp.SampleHistory.FFT_TREBLE;
 
 public class RecorderActivity extends AppCompatActivity {
 
@@ -55,9 +58,10 @@ public class RecorderActivity extends AppCompatActivity {
     TextView countClap3;
     MusicAnalyzer analyzer;
     int fileCounter;
-    int recordTime = 5000;
+    int recordTime = 6000;
     private SampleHistory sh;
     private float[] shSamples;
+    FloatFFT_1D fft = new FloatFFT_1D(1024);
 
     private String txtPath;
 
@@ -80,9 +84,10 @@ public class RecorderActivity extends AppCompatActivity {
         analyzer = new MusicAnalyzer();
         ProgressBar progressBar = findViewById(R.id.progressBar);
         progressBar.setVisibility(View.INVISIBLE);
-        sh = new SampleHistory(sampleRate,5);
-        int samplesize = RECORD_SAMPLE_RATE_44100 * 5;
+        int samplesize = RECORD_SAMPLE_RATE_44100 * recordTime/1000;
         shSamples = new float[samplesize];
+        BPMDetect.setSampleSource(sh);
+
         startRecord.setOnClickListener(v -> {
             try {
                 startRecording(recordPathWav, RECORD_ENCODING_BITRATE_48000);
@@ -120,7 +125,9 @@ public class RecorderActivity extends AppCompatActivity {
         countClap1.setText("");
         sampleRate = RECORD_SAMPLE_RATE_44100;
         channelCount = 1;
+        ind = 1;
         recordFile = new File(outputFile);
+        sh = new SampleHistory(RECORD_SAMPLE_RATE_44100, recordTime/1000);
         if (recordFile.createNewFile()) {
             Log.d(LOG_TAG, "File created: " + recordFile.getName());
         } else {
@@ -138,6 +145,7 @@ public class RecorderActivity extends AppCompatActivity {
                             channel,
                             AudioFormat.ENCODING_PCM_16BIT);
                 }
+                bufferSize /= 2;
                 recorder = new AudioRecord(
                         MediaRecorder.AudioSource.MIC,
                         sampleRate,
@@ -197,60 +205,40 @@ public class RecorderActivity extends AppCompatActivity {
 
             byte[] audioBytes = out.toByteArray();
             txtPath = this.getFilesDir().getAbsolutePath() + "/debugdata";
-            File txtFile = new File(txtPath);
-            if (txtFile.createNewFile()) {
-                Log.i(LOG_TAG, "File created: " + txtFile.getName());
-            } else {
-                Log.i(LOG_TAG, "File already exists.");
-            }
+//---------- to array without header and nulls
+            float[] newBassArray = cutNulls(sh.getFftSamples(FFT_BASS));
+            float[] newMidArray = cutNulls(sh.getFftSamples(FFT_MID));
+            float[] newTrebleArray = cutNulls(sh.getFftSamples(FFT_TREBLE));
+            float[] newFullArray = cutNulls(shSamples);
 
 //---------- print float array
-            printArrayToFile(shSamples);
-//            printArrayToFile(sh.getFftSamples(FFT_BASS));
-//            printArrayToFile(sh.getFftSamples(FFT_MID));
-//            printArrayToFile(sh.getFftSamples(FFT_TREBLE));
+            printArrayToFloatFile(newFullArray, "all");
+            printArrayToFloatFile(newMidArray, "mid");
+            printArrayToFloatFile(newBassArray, "bass");
+            printArrayToFloatFile(newTrebleArray, "treble");
 
-
-            printArrayToFile(audioBytes);
-//---------- to Int array
-            int lenAudioBytes = audioBytes.length;
-            int lenNewIntAudioBytes = lenAudioBytes / 2;
-            int[] newIntAudioBytes = new int[lenNewIntAudioBytes];
-            for (int i = 0, j = 0; i < lenAudioBytes-1; i = i+2, j++) {
-                newIntAudioBytes[j] = (((int) audioBytes[i+1]) << 8) | ((int) audioBytes[i]);
-            }
-//---------- to array without header and nulls
-            int lenHeader = 0;
-            for (int i = 22; i < lenNewIntAudioBytes; i++) {
-                if(newIntAudioBytes[i] != 0){
-                    lenHeader = i;
-                    break;
-                }
-            }
-
-            int lenNewArrayWithoutNulls = lenNewIntAudioBytes - lenHeader;
-            int[] newArrayWithoutNulls = new int[lenNewArrayWithoutNulls];
-            for (int i = 0, j = lenHeader; j < lenNewIntAudioBytes-1; i++, j++) {
-                newArrayWithoutNulls[i] = newIntAudioBytes[j];
-            }
-            printArrayToFile(newArrayWithoutNulls);
-
-            int lenInvertArray = lenNewArrayWithoutNulls;
-            int[] invertArray = new int[lenInvertArray];
-            for (int i = 0; i < lenInvertArray; i++) {
-                if(newArrayWithoutNulls[i] < 0)
-                    invertArray[i] = newArrayWithoutNulls[i]*(-1);
-            }
-            printArrayToFile(invertArray);
 //---------- analyzer
+            Log.i(LOG_TAG, "=======algo1==============");
+            int resultAlgo11 = analyzer.Algo1(newBassArray);
+            Log.i(LOG_TAG, "=======algo2==============");
+            int resultAlgo12 = analyzer.Algo1(newMidArray);
+            Log.i(LOG_TAG, "=======algo3==============");
+            int resultAlgo13 = analyzer.Algo1(newTrebleArray);
+            int resultAlgo21 = analyzer.Algo2(newBassArray);
+            int resultAlgo22 = analyzer.Algo2(newMidArray);
+            int resultAlgo23 = analyzer.Algo2(newTrebleArray);
+            int resultAlgo31 = analyzer.Algo3(newBassArray);
+            int resultAlgo32 = analyzer.Algo3(newMidArray);
+            int resultAlgo33 = analyzer.Algo3(newTrebleArray);
+            int resultAlgo41 = analyzer.Algo4(newBassArray);
+            int resultAlgo42 = analyzer.Algo4(newMidArray);
+            int resultAlgo43 = analyzer.Algo4(newTrebleArray);
 
-            int resultAlgo1 = analyzer.Algo1(newArrayWithoutNulls);
-            int resultAlgo2 = analyzer.Algo2(invertArray);
-            int resultAlgo3 = analyzer.Algo3(invertArray);
-            int resultAlgo4 = analyzer.Algo4(newArrayWithoutNulls);
-            countClap1.setText("Алгоритм 1: " + resultAlgo1);
-            countClap2.setText("Алгоритм 2: " + resultAlgo2);
-            countClap3.setText("Алгоритм 3: " + resultAlgo3);
+//            countClap1.setText("Алгоритм 1: " + resultAlgo11 + " " + resultAlgo12 + " " + resultAlgo13 +" " + resultAlgo41 +"");
+//            countClap2.setText("Алгоритм 2: " + resultAlgo21 + " " + resultAlgo22 + " " + resultAlgo23 +" " + resultAlgo42 +"");
+//            countClap3.setText("Алгоритм 3: " + resultAlgo31 + " " + resultAlgo32 + " " + resultAlgo33 +" " + resultAlgo43 +"");
+            countClap1.setText("Алгоритм 1: " + resultAlgo11*10 + " " + resultAlgo21*10 + " " + resultAlgo31*10 +" " + resultAlgo41*10 +"");
+
 
 
         } catch (Exception e) {
@@ -259,8 +247,8 @@ public class RecorderActivity extends AppCompatActivity {
         Log.i(LOG_TAG, "The audio file is ");
     }
 
-    private void printArrayToFile(int[] array) throws IOException {
-        FileWriter myWriter = new FileWriter(txtPath + "_" + fileCounter);
+    private void printArrayToIntFile(int[] array) throws IOException {
+        FileWriter myWriter = new FileWriter(txtPath + "_int_" + fileCounter);
         for (int audioInt : array) {
             myWriter.write(audioInt + " ");
         }
@@ -268,21 +256,47 @@ public class RecorderActivity extends AppCompatActivity {
         fileCounter++;
     }
 
-    private void printArrayToFile(byte[] array) throws IOException {
-        FileWriter myWriter = new FileWriter(txtPath);
+    private void printArrayToByteFile(byte[] array) throws IOException {
+        FileWriter myWriter = new FileWriter(txtPath + "_byte");
         for (byte audioInt : array) {
             myWriter.write(audioInt + " ");
         }
         myWriter.close();
     }
 
-    private void printArrayToFile(float[] array) throws IOException {
-        FileWriter myWriter = new FileWriter(txtPath + "-" + fileCounter);
+    private void printArrayToFloatFile(float[] array, String name) throws IOException {
+        FileWriter myWriter = new FileWriter(txtPath + "_" + name);
         for (float audioInt : array) {
             myWriter.write(audioInt + " ");
         }
         myWriter.close();
         fileCounter++;
+    }
+
+    private float[] cutNulls(float[] array) {
+        int prefix = 0;
+        int postfix = 0;
+
+        for (int i = 0; i < array.length; i++) {
+            if (prefix == 0) {
+                if (array[i] != 0) {
+                    prefix = i;
+                    break;
+                }
+            }
+        }
+        for (int i = array.length - 1; i > 0; i--) {
+             if (postfix == 0) {
+                if (array[i] != 0) {
+                    postfix = i;
+                    break;
+                }
+            }
+        }
+        int newsize = postfix - prefix;
+        float[] newArray = new float[newsize];
+        System.arraycopy(array, prefix, newArray,0, newsize);
+        return newArray;
     }
 
     private void writeAudioDataToWavFile() throws IOException {
@@ -297,30 +311,24 @@ public class RecorderActivity extends AppCompatActivity {
 
         float sample = 0;
         float[] samples = sh.getSamples();
-        FloatFFT_1D fft = new FloatFFT_1D(1024);
 
         if (null != fos) {
             int chunksCount = 0;
             while (isRecording) {
                 chunksCount += recorder.read(data, 0, bufferSize);
                 if (AudioRecord.ERROR_INVALID_OPERATION != chunksCount) {
-                    try {
-                        for (int i = 0; i < (data.length / 4); i++) {
-                            sample = data[i * 4 + 1] << 8 | (255 & data[i * 4]);
-                            samples[i] = sample;
-                        }
-                        Log.d(LOG_TAG, "= = = = = = = = = " + samples[10]);
-                        fos.write(data);
-                        new Thread(new FFTer(fft, samples, sh)).start();
-                        int newind = samples.length * ind - samples.length;
-                        for (int i = newind, j = 0; i < samples.length * ind; i++, j++) {
-                            shSamples[i] = samples[j];
-                        }
-                        ind++;
-                    } catch (IOException e) {
-                        Log.e(LOG_TAG, e.toString());
-                        stopRecording();
+                    for (int i = 0; i < (data.length / 2); i++) {
+                        sample = data[i * 2 + 1] << 8 | (255 & data[i * 2]);
+                        samples[i] = sample;
                     }
+                    Log.d(LOG_TAG, "= = = = = = = = = " + samples.length);
+                    fos.write(data);
+                    new Thread(new FFTer(fft, samples, sh)).start();
+                    int newind = (samples.length * ind - samples.length) / 2;
+                    for (int i = newind, j = 0; i < samples.length * ind / 2; i++, j++) {
+                        shSamples[i] = samples[j];
+                    }
+                    ind++;
                 }
             }
         }
@@ -455,16 +463,37 @@ public class RecorderActivity extends AppCompatActivity {
         }
     }
 
-    public void readStart(View v) {
-    }
-
-    public void readStop(View v) {
-    }
-
     @Override
     protected void onDestroy() {
         super.onDestroy();
         h.removeCallbacksAndMessages(null);
     }
+
+
+    private static BPMBestGuess		bpm					= new BPMBestGuess();
+    public double					dbpm				= 0;
+    public long						downbeat			= 0;
+
+    public void bpmSearch()
+    {
+        try {
+            dbpm = bpm.getBPM();
+            dbpm = Math.round(dbpm);
+
+            BPMDetect.detectBPM(BPMDetect.filteredIntegral(sh.getFftSamples(SampleHistory.FFT_BASS)),
+                    sampleRate, 0);
+            BPMDetect.detectBPM(BPMDetect.filteredIntegral(sh.getFftSamples(SampleHistory.FFT_MID)),
+                    sampleRate, 1);
+            BPMDetect.detectBPM(BPMDetect.filteredIntegral(sh.getFftSamples(SampleHistory.FFT_TREBLE)),
+                    sampleRate, 2);
+
+            downbeat = BPMDetect.getDownbeat(sh.getFftSamples(SampleHistory.FFT_BASS), sampleRate);
+
+        }
+        catch (Exception err) {
+            err.printStackTrace();
+        }
+    }
+
 }
 

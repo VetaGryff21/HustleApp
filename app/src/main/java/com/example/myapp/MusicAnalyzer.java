@@ -8,38 +8,135 @@ public class MusicAnalyzer {
 
     public MusicAnalyzer(){ }
 
-    public int Algo1(int[] musicArray) {
+    public int Algo1(float[] musicArray) {
         int size = musicArray.length;
-        int fragmentsize = 500;
+        int fragmentsize = 20;
         int counter = 0;
-        int jump = 1000;
-
-        int max, min;
+        int persent = 50;
+        float peak;
+        float max;
+        int flag;
         int size2 = size - fragmentsize;
 
         for (int i = 0; i < size2; i = i + fragmentsize) {
-            max = 0;
-            min = 500000;
+            max = -1;
             for (int j = i; j < i + fragmentsize; j++) {
-                if(Math.abs(musicArray[j]) > max)
-                    max = Math.abs(musicArray[j]);
-                if(Math.abs(musicArray[j]) < min)
-                    min = Math.abs(musicArray[j]);
+                if(musicArray[j] > max)
+                    max = musicArray[j];
             }
-            if(max - min > jump)
+            peak = max / 100 * persent;
+            flag = 0;
+            for (int j = i; j < i + fragmentsize; j++) {
+                if(musicArray[j] > peak) {
+                    flag++;
+                }
+            }
+            Log.d(LOG_TAG, "flag == "+ flag);
+            if(flag < 5)
                 counter++;
-            Log.d(LOG_TAG, "---- " + min + "---- " + max);
         }
         return counter;
     }
 
-    public int Algo2(int[] musicArray) {
+    public int Algo2(float[] musicArray) {
         int size = musicArray.length;
-        int fragmentsize = 1000;
+        int fragmentsize = 30;
         int counter = 0;
         int persent = 50;
-        int peak;
-        int max;
+        float peak;
+        float max;
+        int flag;
+        int size2 = size - fragmentsize;
+
+        for (int i = 0; i < size2; i = i + fragmentsize) {
+            max = -1;
+            for (int j = i; j < i + fragmentsize; j++) {
+                if(musicArray[j] > max)
+                    max = musicArray[j];
+            }
+            peak = max / 100 * persent;
+            flag = 0;
+            for (int j = i; j < i + fragmentsize; j++) {
+                if(musicArray[j] > peak) {
+                    flag++;
+                }
+            }
+            Log.d(LOG_TAG, "flag == "+ flag);
+            if(flag < 5)
+                counter++;
+        }
+        return counter;
+    }
+
+    public int Algo3(float[] musicArray) {
+        int size = musicArray.length;
+        int fragmentsize = 38;
+        int counter = 0;
+        int persent = 50;
+        float peak;
+        float max;
+        int flag;
+        int size2 = size - fragmentsize;
+
+        for (int i = 0; i < size2; i = i + fragmentsize) {
+            max = -1;
+            for (int j = i; j < i + fragmentsize; j++) {
+                if(musicArray[j] > max)
+                    max = musicArray[j];
+            }
+            peak = max / 100 * persent;
+            flag = 0;
+            for (int j = i; j < i + fragmentsize; j++) {
+                if(musicArray[j] > peak) {
+                    flag++;
+                }
+            }
+            Log.d(LOG_TAG, "flag == "+ flag);
+            if(flag < 7)
+                counter++;
+        }
+        return counter;
+    }
+
+    public int Algo4(float[] musicArray) {
+        int size = musicArray.length;
+        int fragmentsize = 45;
+        int counter = 0;
+        int persent = 50;
+        float peak;
+        float max;
+        int flag;
+        int size2 = size - fragmentsize;
+
+        for (int i = 0; i < size2; i = i + fragmentsize) {
+            max = -1;
+            for (int j = i; j < i + fragmentsize; j++) {
+                if(musicArray[j] > max)
+                    max = musicArray[j];
+            }
+            peak = max / 100 * persent;
+            flag = 0;
+            for (int j = i; j < i + fragmentsize; j++) {
+                if(musicArray[j] > peak) {
+                    flag++;
+                }
+            }
+            Log.d(LOG_TAG, "flag == "+ flag);
+            if(flag < 10)
+                counter++;
+        }
+        return counter;
+    }
+
+
+
+    public int Algo21(float[] musicArray) {
+        int size = musicArray.length;
+        int fragmentsize = 20;
+        int counter = 0;
+        int persent = 50;
+        float peak;
+        float max;
         int flag;
         int size2 = size - fragmentsize;
 
@@ -63,18 +160,18 @@ public class MusicAnalyzer {
         return counter;
     }
 
-    public int Algo3(int[] musicArray) {
+    public int Algo31(float[] musicArray) {
         int size = musicArray.length;
         int lenNewMusicArray = size / 2;
-        int[] newMusicArray = new int[lenNewMusicArray];
+        float[] newMusicArray = new float[lenNewMusicArray];
         for (int i = 0, j = 0; i < size-1; i = i+2, j++) {
             newMusicArray[j] = (musicArray[i]+musicArray[i+1])/2;
         }
-        int fragmentsize = 1000;
+        int fragmentsize = 1;
         int counter = 0;
         int persent = 30;
-        int peak;
-        int max;
+        float peak;
+        float max;
         int flag;
         int size2 = lenNewMusicArray - fragmentsize;
 
@@ -98,7 +195,7 @@ public class MusicAnalyzer {
         return counter;
     }
 
-    public int Algo4(int[] musicArray) {
+    public int Algo41(float[] musicArray) {
         int size = musicArray.length;
         int fragmentsize = 1000;
         int counter = 0;

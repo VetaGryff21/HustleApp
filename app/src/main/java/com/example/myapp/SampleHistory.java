@@ -1,9 +1,10 @@
 package com.example.myapp;
 
-public class SampleHistory {
-    
+import android.util.Log;
 
-    
+public class SampleHistory {
+    static int gg = 1;
+
     public static final int FFT_BASS   = 1;
     public static final int FFT_MID    = 2;
     public static final int FFT_TREBLE = 3;
@@ -28,20 +29,30 @@ public class SampleHistory {
     }
     
 
-    public void addFftSample(float fftBass, float fftMid, float fftTreble) {
+    public synchronized void addFftSample(float fftBass, float fftMid, float fftTreble) {
+        Log.d("TAG add ", "++++" + fftBassSamples + " " + fftMidSamples + " " + fftTrebleSamples);
+        Log.d("TAG fftSampleArraySize ", " " + fftSampleArraySize);
+        Log.d("TAG gg ", " " + gg);
+
         if(fftSampleArraySize != 0) {
+            /*
             for (int i = 0; i < fftSampleArraySize - 1; i++) {
                 fftBassSamples[i] = fftBassSamples[i + 1];
                 fftMidSamples[i] = fftMidSamples[i + 1];
                 fftTrebleSamples[i] = fftTrebleSamples[i + 1];
             }
-            fftBassSamples[fftSampleArraySize - 1] = fftBass;
-            fftMidSamples[fftSampleArraySize - 1] = fftMid;
-            fftTrebleSamples[fftSampleArraySize - 1] = fftTreble;
+             */
+
+            ++gg;
+            fftBassSamples[gg - 1] = fftBass;
+            fftMidSamples[gg - 1] = fftMid;
+            fftTrebleSamples[gg - 1] = fftTreble;
         }
     }
 
     public float[] getFftSamples(int type) {
+        Log.d("TAG get  ", "++++" + fftBassSamples + " " + fftMidSamples + " " + fftTrebleSamples);
+        Log.d("TAG get size  ", " " +fftBassSamples.length + " " + fftBassSamples.toString());
         switch (type) {
             case FFT_BASS:   return fftBassSamples.clone();
             case FFT_MID:    return fftMidSamples.clone();
