@@ -4,6 +4,7 @@
     <string name="btnMetronome">Метроном</string>
     <string name="btnSearch">Поиск танцоров</string>
     <string name="search">найти</string>
+    <string name="btnBPM">Счетчик BPM</string>
 
     <string name="minus_one">-1</string>
     <string name="minus_five">-5</string>
@@ -34,4 +35,5 @@
     <string name="search_by_code">по коду</string>
     <string name="search_by_name">по имени</string>
     <string name="search_by_club">по клубу</string>
+    <string name="btnStartApp">в меню</string>
 </resources>
