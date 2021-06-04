@@ -59,7 +59,7 @@
             android:padding="10dp">
 
             <Button
-                android:id="@+id/btn_player"
+                android:id="@+id/btn_bpmdetect"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:background="@drawable/btn_start"
@@ -76,7 +76,7 @@
             android:padding="10dp">
 
             <Button
-                android:id="@+id/btn_bpmdetect"
+                android:id="@+id/btn_player"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"

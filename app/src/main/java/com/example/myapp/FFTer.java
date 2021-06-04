@@ -1,8 +1,6 @@
 package com.example.myapp;
 
 
-import android.util.Log;
-
 import org.jtransforms.fft.FloatFFT_1D;
 
 public class FFTer implements Runnable { // Does FFTs
@@ -85,8 +83,7 @@ public class FFTer implements Runnable { // Does FFTs
         else
             avgTrebHigh = (1 - avgWeightStrong) * avgTrebHigh + (avgWeightStrong) * trebleVal;
 
-        sh.addFftSample(bassVal, midVal, trebleVal);
-        Log.d("FFter ", "-- " + bassVal + "-- " + midVal + "-- " + trebleVal);
+        if(bassVal != 0 &&  midVal != 0 && trebleVal != 0)
+            sh.addFftSample(bassVal, midVal, trebleVal);
     }
-
 }

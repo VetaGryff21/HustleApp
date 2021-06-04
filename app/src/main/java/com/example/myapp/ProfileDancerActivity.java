@@ -1,6 +1,5 @@
 package com.example.myapp;
 
-import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.widget.TextView;
@@ -52,12 +51,12 @@ public class ProfileDancerActivity extends AppCompatActivity {
 
     @Override
     public void onBackPressed() {
-        backActivity(ProfileDancerActivity.this, MainActivity.class);
+        backActivity();
     }
 
-    private void backActivity(Object fromActivity, Object toActivity) {
+    private void backActivity() {
         try {
-            Intent intent = new Intent((Context) fromActivity, (Class<?>) toActivity);
+            Intent intent = new Intent(this, SearchDancerActivity.class);
             startActivity(intent);
             finish();
         } catch (Exception e) {

@@ -1,6 +1,5 @@
 package com.example.myapp;
 
-import android.app.Activity;
 import android.content.ComponentName;
 import android.content.ContentResolver;
 import android.content.Context;
@@ -279,13 +278,11 @@ public class PlayerActivity extends AppCompatActivity implements MediaPlayerCont
 
     private void backActivity() {
         try {
-            Intent intent = new Intent(this, MainActivity.class);
+            Intent intent = new Intent(this, MenuActivity.class);
             startActivity(intent);
             finish();
         } catch (Exception e) {
             System.out.println("Какая-то ошибочка");
         }
     }
-
-
 }

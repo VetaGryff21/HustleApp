@@ -1,6 +1,7 @@
 package com.example.myapp;
 
 import android.Manifest;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.media.AudioFormat;
 import android.media.AudioRecord;
@@ -34,7 +35,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.RandomAccessFile;
 
-import static com.example.myapp.Constants.RECORD_ENCODING_BITRATE_48000;
 import static com.example.myapp.Constants.RECORD_SAMPLE_RATE_44100;
 import static com.example.myapp.SampleHistory.FFT_BASS;
 import static com.example.myapp.SampleHistory.FFT_MID;
@@ -58,7 +58,7 @@ public class RecorderActivity extends AppCompatActivity {
     TextView countClap3;
     MusicAnalyzer analyzer;
     int fileCounter;
-    int recordTime = 6000;
+    int recordTime = 6;
     private SampleHistory sh;
     private float[] shSamples;
     FloatFFT_1D fft = new FloatFFT_1D(1024);
@@ -84,13 +84,13 @@ public class RecorderActivity extends AppCompatActivity {
         analyzer = new MusicAnalyzer();
         ProgressBar progressBar = findViewById(R.id.progressBar);
         progressBar.setVisibility(View.INVISIBLE);
-        int samplesize = RECORD_SAMPLE_RATE_44100 * recordTime/1000;
-        shSamples = new float[samplesize];
+        int storysize = RECORD_SAMPLE_RATE_44100 * recordTime;
+        shSamples = new float[storysize];
         BPMDetect.setSampleSource(sh);
 
         startRecord.setOnClickListener(v -> {
             try {
-                startRecording(recordPathWav, RECORD_ENCODING_BITRATE_48000);
+                startRecording(recordPathWav);
                 startRecord.setEnabled(false);
                 startRecord.setVisibility(View.INVISIBLE);
                 progressBar.setVisibility(View.VISIBLE);
@@ -107,7 +107,7 @@ public class RecorderActivity extends AppCompatActivity {
                         e.printStackTrace();
                     }
                 };
-                h.postDelayed(r, recordTime);
+                h.postDelayed(r, recordTime*1000);
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -121,13 +121,13 @@ public class RecorderActivity extends AppCompatActivity {
     }
 
     int ind = 1;
-    public void startRecording(String outputFile, int bitrate) throws IOException {
+    public void startRecording(String outputFile) throws IOException {
         countClap1.setText("");
         sampleRate = RECORD_SAMPLE_RATE_44100;
         channelCount = 1;
         ind = 1;
         recordFile = new File(outputFile);
-        sh = new SampleHistory(RECORD_SAMPLE_RATE_44100, recordTime/1000);
+        sh = new SampleHistory(RECORD_SAMPLE_RATE_44100, recordTime);
         if (recordFile.createNewFile()) {
             Log.d(LOG_TAG, "File created: " + recordFile.getName());
         } else {
@@ -137,15 +137,15 @@ public class RecorderActivity extends AppCompatActivity {
         if (recordFile.exists() && recordFile.isFile()) {
             channel = channelCount == 1 ? AudioFormat.CHANNEL_IN_MONO : AudioFormat.CHANNEL_IN_STEREO;
             try {
-                bufferSize = AudioRecord.getMinBufferSize(sampleRate,
-                        channel,
-                        AudioFormat.ENCODING_PCM_16BIT);
+//                bufferSize = AudioRecord.getMinBufferSize(sampleRate,
+//                        channel,
+//                        AudioFormat.ENCODING_PCM_16BIT);
+                bufferSize = 128;
                 if (bufferSize == AudioRecord.ERROR || bufferSize == AudioRecord.ERROR_BAD_VALUE) {
                     bufferSize = AudioRecord.getMinBufferSize(sampleRate,
                             channel,
                             AudioFormat.ENCODING_PCM_16BIT);
                 }
-                bufferSize /= 2;
                 recorder = new AudioRecord(
                         MediaRecorder.AudioSource.MIC,
                         sampleRate,
@@ -212,32 +212,47 @@ public class RecorderActivity extends AppCompatActivity {
             float[] newFullArray = cutNulls(shSamples);
 
 //---------- print float array
-            printArrayToFloatFile(newFullArray, "all");
+            //printArrayToFloatFile(newFullArray, "all");
             printArrayToFloatFile(newMidArray, "mid");
             printArrayToFloatFile(newBassArray, "bass");
             printArrayToFloatFile(newTrebleArray, "treble");
 
+            SampleHistory sh1 = new SampleHistory(sampleRate, 5);
+
+
+//            dbpm = bpm.getBPM();
+//            dbpm = Math.round(dbpm);
+
+            Double db = BPMDetect.detectBPM(BPMDetect.filteredIntegral(newBassArray),
+                        sampleRate, 0);
+            Double dm = BPMDetect.detectBPM(BPMDetect.filteredIntegral(newMidArray),
+                        sampleRate, 1);
+            Double dt = BPMDetect.detectBPM(BPMDetect.filteredIntegral(newTrebleArray),
+                        sampleRate, 2);
+
+            //downbeat = BPMDetect.getDownbeat(sh.getFftSamples(SampleHistory.FFT_BASS), sampleRate);
+
 //---------- analyzer
             Log.i(LOG_TAG, "=======algo1==============");
-            int resultAlgo11 = analyzer.Algo1(newBassArray);
-            Log.i(LOG_TAG, "=======algo2==============");
-            int resultAlgo12 = analyzer.Algo1(newMidArray);
-            Log.i(LOG_TAG, "=======algo3==============");
-            int resultAlgo13 = analyzer.Algo1(newTrebleArray);
-            int resultAlgo21 = analyzer.Algo2(newBassArray);
-            int resultAlgo22 = analyzer.Algo2(newMidArray);
-            int resultAlgo23 = analyzer.Algo2(newTrebleArray);
-            int resultAlgo31 = analyzer.Algo3(newBassArray);
-            int resultAlgo32 = analyzer.Algo3(newMidArray);
-            int resultAlgo33 = analyzer.Algo3(newTrebleArray);
-            int resultAlgo41 = analyzer.Algo4(newBassArray);
-            int resultAlgo42 = analyzer.Algo4(newMidArray);
-            int resultAlgo43 = analyzer.Algo4(newTrebleArray);
+//            int resultAlgo11 = analyzer.Algo1(newBassArray);
+//            Log.i(LOG_TAG, "=======algo2==============");
+//            int resultAlgo12 = analyzer.Algo1(newMidArray);
+//            Log.i(LOG_TAG, "=======algo3==============");
+//            int resultAlgo13 = analyzer.Algo1(newTrebleArray);
+//            int resultAlgo21 = analyzer.Algo2(newBassArray);
+//            int resultAlgo22 = analyzer.Algo2(newMidArray);
+//            int resultAlgo23 = analyzer.Algo2(newTrebleArray);
+//            int resultAlgo31 = analyzer.Algo3(newBassArray);
+//            int resultAlgo32 = analyzer.Algo3(newMidArray);
+//            int resultAlgo33 = analyzer.Algo3(newTrebleArray);
+//            int resultAlgo41 = analyzer.Algo4(newBassArray);
+//            int resultAlgo42 = analyzer.Algo4(newMidArray);
+//            int resultAlgo43 = analyzer.Algo4(newTrebleArray);
 
 //            countClap1.setText("Алгоритм 1: " + resultAlgo11 + " " + resultAlgo12 + " " + resultAlgo13 +" " + resultAlgo41 +"");
 //            countClap2.setText("Алгоритм 2: " + resultAlgo21 + " " + resultAlgo22 + " " + resultAlgo23 +" " + resultAlgo42 +"");
 //            countClap3.setText("Алгоритм 3: " + resultAlgo31 + " " + resultAlgo32 + " " + resultAlgo33 +" " + resultAlgo43 +"");
-            countClap1.setText("Алгоритм 1: " + resultAlgo11*10 + " " + resultAlgo21*10 + " " + resultAlgo31*10 +" " + resultAlgo41*10 +"");
+            countClap1.setText("Алгоритм 1: " + db + " " + dm + " " + dt +" " +"");
 
 
 
@@ -311,6 +326,8 @@ public class RecorderActivity extends AppCompatActivity {
 
         float sample = 0;
         float[] samples = sh.getSamples();
+        int mSize = bufferSize/2;
+        float[] samplesmini = new float[mSize];
 
         if (null != fos) {
             int chunksCount = 0;
@@ -319,14 +336,18 @@ public class RecorderActivity extends AppCompatActivity {
                 if (AudioRecord.ERROR_INVALID_OPERATION != chunksCount) {
                     for (int i = 0; i < (data.length / 2); i++) {
                         sample = data[i * 2 + 1] << 8 | (255 & data[i * 2]);
-                        samples[i] = sample;
+                        samplesmini[i] = sample;
                     }
-                    Log.d(LOG_TAG, "= = = = = = = = = " + samples.length);
                     fos.write(data);
+                    for (int i = 0; i < (1024 - mSize); i++)
+                        samples[i] = samples[i + mSize];
+                    for (int i = 0; i < mSize; i++)
+                        samples[i + (1024 - mSize)] = samplesmini[i];
+
                     new Thread(new FFTer(fft, samples, sh)).start();
-                    int newind = (samples.length * ind - samples.length) / 2;
-                    for (int i = newind, j = 0; i < samples.length * ind / 2; i++, j++) {
-                        shSamples[i] = samples[j];
+                    int newind = (mSize * ind - mSize);
+                    for (int i = newind, j = 0; i < mSize; i++, j++) {
+                        shSamples[i] = samplesmini[j];
                     }
                     ind++;
                 }
@@ -474,26 +495,19 @@ public class RecorderActivity extends AppCompatActivity {
     public double					dbpm				= 0;
     public long						downbeat			= 0;
 
-    public void bpmSearch()
-    {
-        try {
-            dbpm = bpm.getBPM();
-            dbpm = Math.round(dbpm);
-
-            BPMDetect.detectBPM(BPMDetect.filteredIntegral(sh.getFftSamples(SampleHistory.FFT_BASS)),
-                    sampleRate, 0);
-            BPMDetect.detectBPM(BPMDetect.filteredIntegral(sh.getFftSamples(SampleHistory.FFT_MID)),
-                    sampleRate, 1);
-            BPMDetect.detectBPM(BPMDetect.filteredIntegral(sh.getFftSamples(SampleHistory.FFT_TREBLE)),
-                    sampleRate, 2);
-
-            downbeat = BPMDetect.getDownbeat(sh.getFftSamples(SampleHistory.FFT_BASS), sampleRate);
-
-        }
-        catch (Exception err) {
-            err.printStackTrace();
-        }
+    @Override
+    public void onBackPressed() {
+        backActivity();
     }
 
+    private void backActivity() {
+        try {
+            Intent intent = new Intent(this, MenuActivity.class);
+            startActivity(intent);
+            finish();
+        } catch (Exception e) {
+            System.out.println("Какая-то ошибочка");
+        }
+    }
 }
 

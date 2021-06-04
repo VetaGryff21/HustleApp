@@ -270,12 +270,12 @@ public class MetronomeActivity extends AppCompatActivity {
 
     @Override
     public void onBackPressed() {
-        backActivity(MetronomeActivity.this, MainActivity.class);
+        backActivity();
     }
 
-    private void backActivity(Object fromActivity, Object toActivity) {
+    private void backActivity() {
         try {
-            Intent intent = new Intent((Context) fromActivity, (Class<?>) toActivity);
+            Intent intent = new Intent(this, MenuActivity.class);
             startActivity(intent);
             finish();
         } catch (Exception e) {
