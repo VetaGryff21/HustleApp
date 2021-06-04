@@ -1,6 +1,7 @@
 package com.example.myapp;
 
 import android.Manifest;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.media.AudioFormat;
 import android.media.AudioRecord;
@@ -8,8 +9,12 @@ import android.media.MediaPlayer;
 import android.media.MediaRecorder;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.view.View;
+import android.widget.ProgressBar;
+import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
@@ -17,6 +22,7 @@ import androidx.core.content.ContextCompat;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jtransforms.fft.FloatFFT_1D;
 
 import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
@@ -28,11 +34,11 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.RandomAccessFile;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 
-import static com.example.myapp.Constants.RECORD_ENCODING_BITRATE_48000;
 import static com.example.myapp.Constants.RECORD_SAMPLE_RATE_44100;
+import static com.example.myapp.SampleHistory.FFT_BASS;
+import static com.example.myapp.SampleHistory.FFT_MID;
+import static com.example.myapp.SampleHistory.FFT_TREBLE;
 
 public class RecorderActivity extends AppCompatActivity {
 
@@ -46,6 +52,16 @@ public class RecorderActivity extends AppCompatActivity {
     int bufferSize;
     AudioRecord recorder;
     Thread recordingThread;
+    Handler h;
+    TextView countClap1;
+    TextView countClap2;
+    TextView countClap3;
+    MusicAnalyzer analyzer;
+    int fileCounter;
+    int recordTime = 6;
+    private SampleHistory sh;
+    private float[] shSamples;
+    FloatFFT_1D fft = new FloatFFT_1D(1024);
 
     private String txtPath;
 
@@ -57,39 +73,61 @@ public class RecorderActivity extends AppCompatActivity {
         setContentView(R.layout.recorder_page);
 
         requestRecordAudioPermission();
+        h = new Handler(Looper.getMainLooper());
+        fileCounter = 0;
 
         recordPathWav = this.getFilesDir().getAbsolutePath() + "/micrec1.wav";
-        View startPlay = findViewById(R.id.start_play);
-        View stopPlay = findViewById(R.id.stop_play);
         View startRecord = findViewById(R.id.start_record);
-        View stopRecord = findViewById(R.id.stop_record);
-        stopRecord.setEnabled(false);
+        countClap1 = findViewById(R.id.textinput_1);
+        countClap2 = findViewById(R.id.textinput_2);
+        countClap3 = findViewById(R.id.textinput_3);
+        analyzer = new MusicAnalyzer();
+        ProgressBar progressBar = findViewById(R.id.progressBar);
+        progressBar.setVisibility(View.INVISIBLE);
+        int storysize = RECORD_SAMPLE_RATE_44100 * recordTime;
+        shSamples = new float[storysize];
+        BPMDetect.setSampleSource(sh);
 
         startRecord.setOnClickListener(v -> {
             try {
-                startRecording(recordPathWav, RECORD_ENCODING_BITRATE_48000);
+                startRecording(recordPathWav);
                 startRecord.setEnabled(false);
-                stopRecord.setEnabled(true);
+                startRecord.setVisibility(View.INVISIBLE);
+                progressBar.setVisibility(View.VISIBLE);
+                countClap1.setText("Идет запись");
+                countClap2.setText("");
+                countClap3.setText("");
+                Runnable r = () -> {
+                    try {
+                        startRecord.setEnabled(true);
+                        startRecord.setVisibility(View.VISIBLE);
+                        progressBar.setVisibility(View.INVISIBLE);
+                        stopRecording();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                };
+                h.postDelayed(r, recordTime*1000);
             } catch (IOException e) {
                 e.printStackTrace();
             }
         });
-        stopRecord.setOnClickListener(v -> {
-            try {
-                stopRecording();
-                startRecord.setEnabled(true);
-                stopRecord.setEnabled(false);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        });
-
     }
 
-    public void startRecording(String outputFile, int bitrate) throws IOException {
+    @Override
+    protected void onPause() {
+        h.removeCallbacksAndMessages(null);
+        super.onPause();
+    }
+
+    int ind = 1;
+    public void startRecording(String outputFile) throws IOException {
+        countClap1.setText("");
         sampleRate = RECORD_SAMPLE_RATE_44100;
         channelCount = 1;
+        ind = 1;
         recordFile = new File(outputFile);
+        sh = new SampleHistory(RECORD_SAMPLE_RATE_44100, recordTime);
         if (recordFile.createNewFile()) {
             Log.d(LOG_TAG, "File created: " + recordFile.getName());
         } else {
@@ -99,9 +137,10 @@ public class RecorderActivity extends AppCompatActivity {
         if (recordFile.exists() && recordFile.isFile()) {
             channel = channelCount == 1 ? AudioFormat.CHANNEL_IN_MONO : AudioFormat.CHANNEL_IN_STEREO;
             try {
-                bufferSize = AudioRecord.getMinBufferSize(sampleRate,
-                        channel,
-                        AudioFormat.ENCODING_PCM_16BIT);
+//                bufferSize = AudioRecord.getMinBufferSize(sampleRate,
+//                        channel,
+//                        AudioFormat.ENCODING_PCM_16BIT);
+                bufferSize = 128;
                 if (bufferSize == AudioRecord.ERROR || bufferSize == AudioRecord.ERROR_BAD_VALUE) {
                     bufferSize = AudioRecord.getMinBufferSize(sampleRate,
                             channel,
@@ -127,6 +166,7 @@ public class RecorderActivity extends AppCompatActivity {
                 recordingThread = new Thread(() -> {
                     try {
                         writeAudioDataToWavFile();
+                        ind = 1;
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
@@ -141,8 +181,8 @@ public class RecorderActivity extends AppCompatActivity {
         }
     }
 
-
     private void playRec() throws IOException {
+        countClap2.setText("Идет анализ");
         MediaPlayer mediaPlayer = new MediaPlayer();
         mediaPlayer.setDataSource(recordPathWav);
         mediaPlayer.prepare();
@@ -164,23 +204,114 @@ public class RecorderActivity extends AppCompatActivity {
             out.flush();
 
             byte[] audioBytes = out.toByteArray();
-            txtPath = this.getFilesDir().getAbsolutePath() + "/debugdata.txt";
-            File txtFile = new File(txtPath);
-            if (txtFile.createNewFile()) {
-                Log.i(LOG_TAG, "File created: " + txtFile.getName());
-            } else {
-                Log.i(LOG_TAG, "File already exists.");
-            }
+            txtPath = this.getFilesDir().getAbsolutePath() + "/debugdata";
+//---------- to array without header and nulls
+            float[] newBassArray = cutNulls(sh.getFftSamples(FFT_BASS));
+            float[] newMidArray = cutNulls(sh.getFftSamples(FFT_MID));
+            float[] newTrebleArray = cutNulls(sh.getFftSamples(FFT_TREBLE));
+            float[] newFullArray = cutNulls(shSamples);
 
-            FileWriter myWriter = new FileWriter(txtPath);
-            for (byte audioByte : audioBytes) {
-                myWriter.write(audioByte + " ");
-            }
-            myWriter.close();
+//---------- print float array
+            //printArrayToFloatFile(newFullArray, "all");
+            printArrayToFloatFile(newMidArray, "mid");
+            printArrayToFloatFile(newBassArray, "bass");
+            printArrayToFloatFile(newTrebleArray, "treble");
+
+            SampleHistory sh1 = new SampleHistory(sampleRate, 5);
+
+
+//            dbpm = bpm.getBPM();
+//            dbpm = Math.round(dbpm);
+
+            Double db = BPMDetect.detectBPM(BPMDetect.filteredIntegral(newBassArray),
+                        sampleRate, 0);
+            Double dm = BPMDetect.detectBPM(BPMDetect.filteredIntegral(newMidArray),
+                        sampleRate, 1);
+            Double dt = BPMDetect.detectBPM(BPMDetect.filteredIntegral(newTrebleArray),
+                        sampleRate, 2);
+
+            //downbeat = BPMDetect.getDownbeat(sh.getFftSamples(SampleHistory.FFT_BASS), sampleRate);
+
+//---------- analyzer
+            Log.i(LOG_TAG, "=======algo1==============");
+//            int resultAlgo11 = analyzer.Algo1(newBassArray);
+//            Log.i(LOG_TAG, "=======algo2==============");
+//            int resultAlgo12 = analyzer.Algo1(newMidArray);
+//            Log.i(LOG_TAG, "=======algo3==============");
+//            int resultAlgo13 = analyzer.Algo1(newTrebleArray);
+//            int resultAlgo21 = analyzer.Algo2(newBassArray);
+//            int resultAlgo22 = analyzer.Algo2(newMidArray);
+//            int resultAlgo23 = analyzer.Algo2(newTrebleArray);
+//            int resultAlgo31 = analyzer.Algo3(newBassArray);
+//            int resultAlgo32 = analyzer.Algo3(newMidArray);
+//            int resultAlgo33 = analyzer.Algo3(newTrebleArray);
+//            int resultAlgo41 = analyzer.Algo4(newBassArray);
+//            int resultAlgo42 = analyzer.Algo4(newMidArray);
+//            int resultAlgo43 = analyzer.Algo4(newTrebleArray);
+
+//            countClap1.setText("Алгоритм 1: " + resultAlgo11 + " " + resultAlgo12 + " " + resultAlgo13 +" " + resultAlgo41 +"");
+//            countClap2.setText("Алгоритм 2: " + resultAlgo21 + " " + resultAlgo22 + " " + resultAlgo23 +" " + resultAlgo42 +"");
+//            countClap3.setText("Алгоритм 3: " + resultAlgo31 + " " + resultAlgo32 + " " + resultAlgo33 +" " + resultAlgo43 +"");
+            countClap1.setText("Алгоритм 1: " + db + " " + dm + " " + dt +" " +"");
+
+
+
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
         Log.i(LOG_TAG, "The audio file is ");
+    }
+
+    private void printArrayToIntFile(int[] array) throws IOException {
+        FileWriter myWriter = new FileWriter(txtPath + "_int_" + fileCounter);
+        for (int audioInt : array) {
+            myWriter.write(audioInt + " ");
+        }
+        myWriter.close();
+        fileCounter++;
+    }
+
+    private void printArrayToByteFile(byte[] array) throws IOException {
+        FileWriter myWriter = new FileWriter(txtPath + "_byte");
+        for (byte audioInt : array) {
+            myWriter.write(audioInt + " ");
+        }
+        myWriter.close();
+    }
+
+    private void printArrayToFloatFile(float[] array, String name) throws IOException {
+        FileWriter myWriter = new FileWriter(txtPath + "_" + name);
+        for (float audioInt : array) {
+            myWriter.write(audioInt + " ");
+        }
+        myWriter.close();
+        fileCounter++;
+    }
+
+    private float[] cutNulls(float[] array) {
+        int prefix = 0;
+        int postfix = 0;
+
+        for (int i = 0; i < array.length; i++) {
+            if (prefix == 0) {
+                if (array[i] != 0) {
+                    prefix = i;
+                    break;
+                }
+            }
+        }
+        for (int i = array.length - 1; i > 0; i--) {
+             if (postfix == 0) {
+                if (array[i] != 0) {
+                    postfix = i;
+                    break;
+                }
+            }
+        }
+        int newsize = postfix - prefix;
+        float[] newArray = new float[newsize];
+        System.arraycopy(array, prefix, newArray,0, newsize);
+        return newArray;
     }
 
     private void writeAudioDataToWavFile() throws IOException {
@@ -192,26 +323,33 @@ public class RecorderActivity extends AppCompatActivity {
             Log.e(LOG_TAG, e.toString());
             fos = null;
         }
+
+        float sample = 0;
+        float[] samples = sh.getSamples();
+        int mSize = bufferSize/2;
+        float[] samplesmini = new float[mSize];
+
         if (null != fos) {
             int chunksCount = 0;
-            ByteBuffer shortBuffer = ByteBuffer.allocate(2);
-            shortBuffer.order(ByteOrder.LITTLE_ENDIAN);
             while (isRecording) {
                 chunksCount += recorder.read(data, 0, bufferSize);
                 if (AudioRecord.ERROR_INVALID_OPERATION != chunksCount) {
-                    long sum = 0;
-                    for (int i = 0; i < bufferSize; i += 2) {
-                        shortBuffer.put(data[i]);
-                        shortBuffer.put(data[i + 1]);
-                        sum += Math.abs(shortBuffer.getShort(0));
-                        shortBuffer.clear();
+                    for (int i = 0; i < (data.length / 2); i++) {
+                        sample = data[i * 2 + 1] << 8 | (255 & data[i * 2]);
+                        samplesmini[i] = sample;
                     }
-                    try {
-                        fos.write(data);
-                    } catch (IOException e) {
-                        Log.e(LOG_TAG, e.toString());
-                        stopRecording();
+                    fos.write(data);
+                    for (int i = 0; i < (1024 - mSize); i++)
+                        samples[i] = samples[i + mSize];
+                    for (int i = 0; i < mSize; i++)
+                        samples[i + (1024 - mSize)] = samplesmini[i];
+
+                    new Thread(new FFTer(fft, samples, sh)).start();
+                    int newind = (mSize * ind - mSize);
+                    for (int i = newind, j = 0; i < mSize; i++, j++) {
+                        shSamples[i] = samplesmini[j];
                     }
+                    ind++;
                 }
             }
         }
@@ -346,15 +484,30 @@ public class RecorderActivity extends AppCompatActivity {
         }
     }
 
-    public void readStart(View v) {
-    }
-
-    public void readStop(View v) {
-    }
-
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        h.removeCallbacksAndMessages(null);
+    }
+
+
+    private static BPMBestGuess		bpm					= new BPMBestGuess();
+    public double					dbpm				= 0;
+    public long						downbeat			= 0;
+
+    @Override
+    public void onBackPressed() {
+        backActivity();
+    }
+
+    private void backActivity() {
+        try {
+            Intent intent = new Intent(this, MenuActivity.class);
+            startActivity(intent);
+            finish();
+        } catch (Exception e) {
+            System.out.println("Какая-то ошибочка");
+        }
     }
 }
 

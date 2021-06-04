@@ -38,8 +38,8 @@ public class MenuActivity extends AppCompatActivity {
             }
         });
 
-        Button playerButton = (Button) findViewById(R.id.btn_player);
-        playerButton.setOnClickListener(new View.OnClickListener() {
+        Button bpmdetectButton = (Button) findViewById(R.id.btn_bpmdetect);
+        bpmdetectButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 try {
@@ -49,5 +49,32 @@ public class MenuActivity extends AppCompatActivity {
                 } catch (Exception e) { }
             }
         });
+
+        Button playerButton = (Button) findViewById(R.id.btn_player);
+        playerButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                try {
+                    Intent intent = new Intent(MenuActivity.this, PlayerActivity.class);
+                    startActivity(intent);
+                    finish();
+                } catch (Exception e) { }
+            }
+        });
+    }
+
+    @Override
+    public void onBackPressed() {
+        backActivity();
+    }
+
+    private void backActivity() {
+        try {
+            Intent intent = new Intent(this, MainActivity.class);
+            startActivity(intent);
+            finish();
+        } catch (Exception e) {
+            System.out.println("Какая-то ошибочка");
+        }
     }
 }
