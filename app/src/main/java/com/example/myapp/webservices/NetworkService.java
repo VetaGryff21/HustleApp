@@ -5,7 +5,7 @@ import retrofit2.converter.gson.GsonConverterFactory;
 
 public class NetworkService {
     private static NetworkService mInstance;
-    private static final String BASE_URL = "http://192.168.43.88:8081";
+    private static final String BASE_URL = "https://hustleserver.herokuapp.com";
     private Retrofit mRetrofit;
 
     private NetworkService() {
