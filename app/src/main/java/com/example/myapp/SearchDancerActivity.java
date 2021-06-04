@@ -34,52 +34,55 @@ public class SearchDancerActivity extends AppCompatActivity {
         setContentView(R.layout.searchdancer_page);
         final EditText inputDancer = findViewById(R.id.search_input);
         dancerView = (ListView) findViewById(R.id.dancer_list);
-
-
         Button searchDancer = (Button) findViewById(R.id.btn_searching);
         searchDancer.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 final String tmpName = inputDancer.getText().toString();
-                NetworkService.getInstance()
-                        .getJSONApi()
-                        .getDancersByFulname(tmpName)
-                        .enqueue(new Callback<List<Dancer>>(){
-                            @Override
-                            public void onResponse(@NonNull Call<List<Dancer>> call, @NonNull Response<List<Dancer>> response) {
+                if(tmpName.length() != 0) {
+                    searchDancer.setClickable(false);
+                    NetworkService.getInstance()
+                            .getJSONApi()
+                            .getDancersByFulname(tmpName)
+                            .enqueue(new Callback<List<Dancer>>() {
+                                @Override
+                                public void onResponse(@NonNull Call<List<Dancer>> call, @NonNull Response<List<Dancer>> response) {
 
-                                if (response.code() == 404) {
+                                    if (response.code() == 404) {
+                                        FragmentManager manager = getSupportFragmentManager();
+                                        MyDialogFragment myDialogFragment = new MyDialogFragment();
+                                        myDialogFragment.show(manager, "myDialog");
+                                        return;
+                                    }
+
+                                    List<Dancer> dancerList = response.body();
+                                    if (!dancerList.isEmpty()) {
+                                        DancerUnitAdapter dancerUnitAdapter = new DancerUnitAdapter(v.getContext(), dancerList);
+                                        dancerView.setAdapter(dancerUnitAdapter);
+                                        dancerView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                                            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                                                Dancer dancer = dancerList.get(position);
+                                                Intent intent = new Intent(SearchDancerActivity.this, ProfileDancerActivity.class);
+                                                String s = (new Gson().toJson(dancer));
+                                                intent.putExtra("DancerUnit", s);
+                                                startActivity(intent);
+                                            }
+                                        });
+
+                                    }
+                                    searchDancer.setClickable(true);
+                                }
+
+                                @Override
+                                public void onFailure(Call<List<Dancer>> call, Throwable t) {
                                     FragmentManager manager = getSupportFragmentManager();
                                     MyDialogFragment myDialogFragment = new MyDialogFragment();
                                     myDialogFragment.show(manager, "myDialog");
+                                    searchDancer.setClickable(true);
                                     return;
                                 }
-
-                                List<Dancer> dancerList = response.body();
-                                if(!dancerList.isEmpty()) {
-                                    DancerUnitAdapter dancerUnitAdapter = new DancerUnitAdapter(v.getContext(), dancerList);
-                                    dancerView.setAdapter(dancerUnitAdapter);
-                                    dancerView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-                                        public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                                            Dancer dancer = dancerList.get(position);
-                                            Intent intent = new Intent(SearchDancerActivity.this, ProfileDancerActivity.class);
-                                            String s = (new Gson().toJson(dancer));
-                                            intent.putExtra("DancerUnit", s);
-                                            startActivity(intent);
-                                        }
-                                    });
-
-                                }
-                            }
-
-                            @Override
-                            public void onFailure(Call<List<Dancer>> call, Throwable t) {
-                                FragmentManager manager = getSupportFragmentManager();
-                                MyDialogFragment myDialogFragment = new MyDialogFragment();
-                                myDialogFragment.show(manager, "myDialog");
-                                return;
-                            }
-                        });
+                            });
+                }
             }
         });
     }
