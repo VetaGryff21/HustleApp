@@ -23,7 +23,7 @@ import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
-public class SearchDancerActivity extends AppCompatActivity {
+public class SearchByCodeActivity extends AppCompatActivity {
 
     private ArrayList<DancerUnit> dancerList;
     private ListView dancerView;
@@ -33,19 +33,19 @@ public class SearchDancerActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.searchdancer_page);
+        setContentView(R.layout.searchbycode_page);
         inputDancer = findViewById(R.id.search_input);
         dancerView = (ListView) findViewById(R.id.dancer_list);
         searchDancer = (Button) findViewById(R.id.btn_searching);
         searchDancer.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                final String tmpName = inputDancer.getText().toString();
-                if(tmpName.length() != 0) {
+                final String tmpCode = inputDancer.getText().toString();
+                if(tmpCode.length() != 0) {
                     searchDancer.setClickable(false);
                     NetworkService.getInstance()
                             .getJSONApi()
-                            .getDancersByFulname(tmpName)
+                            .getDancerByCode(tmpCode)
                             .enqueue(new Callback<List<Dancer>>() {
                                 @Override
                                 public void onResponse(@NonNull Call<List<Dancer>> call, @NonNull Response<List<Dancer>> response) {
@@ -64,7 +64,7 @@ public class SearchDancerActivity extends AppCompatActivity {
                                         dancerView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
                                             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                                                 Dancer dancer = dancerList.get(position);
-                                                Intent intent = new Intent(SearchDancerActivity.this, ProfileDancerActivity.class);
+                                                Intent intent = new Intent(SearchByCodeActivity.this, ProfileDancerActivity.class);
                                                 String s = (new Gson().toJson(dancer));
                                                 intent.putExtra("DancerUnit", s);
                                                 startActivity(intent);

@@ -56,7 +56,7 @@ public class ProfileDancerActivity extends AppCompatActivity {
 
     private void backActivity() {
         try {
-            Intent intent = new Intent(this, SearchDancerActivity.class);
+            Intent intent = new Intent(this, MenuActivity.class);
             startActivity(intent);
             finish();
         } catch (Exception e) {

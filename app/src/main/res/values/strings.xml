@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">MyApp</string>
+    <string name="app_name">HustleApp</string>
     <string name="start">Профиль</string>
     <string name="btnMetronome">Метроном</string>
     <string name="btnSearch">Поиск танцоров</string>
@@ -32,6 +32,8 @@
     <string name="app_main_name">Hustle App</string>
     <string name="player">Плеер</string>
     <string name="input_dancer_fullname">ФИО танцора</string>
+    <string name="input_dancer_code">код танцора</string>
+    <string name="input_dancer_club">клуб танцора</string>
     <string name="search_by_code">по коду</string>
     <string name="search_by_name">по имени</string>
     <string name="search_by_club">по клубу</string>

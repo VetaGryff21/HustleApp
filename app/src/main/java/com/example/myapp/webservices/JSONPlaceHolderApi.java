@@ -16,8 +16,11 @@ public interface JSONPlaceHolderApi {
     Call<Dancer> getAll();
 
     @GET("/dancers/code/{code}")
-    Call<Dancer> getDancerByCode(@Path("code") String code);
+    Call<List<Dancer>> getDancerByCode(@Path("code") String code);
 
     @GET("/dancers/fullname/{fullname}")
     Call<List<Dancer>> getDancersByFulname(@Path("fullname") String fullname);
+
+    @GET("/dancers/club/{club}")
+    Call<List<Dancer>> getDancersByClub(@Path("club") String club);
 }
