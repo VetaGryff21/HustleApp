@@ -133,7 +133,9 @@ public class PlayerActivity extends AppCompatActivity implements MediaPlayerCont
     }
 
     private void setController(){
-        controller = new MusicController(this);
+        if(controller == null) {
+            controller = new MusicController(this);
+        }
 
         controller.setPrevNextListeners(new View.OnClickListener() {
             @Override
@@ -278,6 +280,9 @@ public class PlayerActivity extends AppCompatActivity implements MediaPlayerCont
 
     private void backActivity() {
         try {
+            if(isPlaying()){
+                onStop();
+            }
             Intent intent = new Intent(this, MenuActivity.class);
             startActivity(intent);
             finish();

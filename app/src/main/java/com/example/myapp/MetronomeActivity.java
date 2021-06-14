@@ -190,24 +190,6 @@ public class MetronomeActivity extends AppCompatActivity {
                 seekBarTempo.setProgress(bpm);
             }
         });
-
-//        bpmImageButton.setOnClickListener(new View.OnClickListener() {
-//            @Override
-//            public void onClick(View v) {
-//                Intent intent = new Intent(MetronomeActivity.this, BpmActivity.class);
-//                finish();
-//                startActivity(intent);
-//            }
-//        });
-//
-//        tunerImageButton.setOnClickListener(new View.OnClickListener() {
-//            @Override
-//            public void onClick(View v) {
-//                Intent intent = new Intent(MetronomeActivity.this, GuitarTunerActivity.class);
-//                finish();
-//                startActivity(intent);
-//            }
-//        });
     }
 
     private AdapterView.OnItemSelectedListener beatsSpinnerListener = new AdapterView.OnItemSelectedListener() {
@@ -275,6 +257,7 @@ public class MetronomeActivity extends AppCompatActivity {
 
     private void backActivity() {
         try {
+            metroTask.metronome.stop();
             Intent intent = new Intent(this, MenuActivity.class);
             startActivity(intent);
             finish();

@@ -1,5 +1,7 @@
 package com.example.myapp;
 
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
@@ -18,11 +20,43 @@ public class MenuActivity extends AppCompatActivity {
         searchButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                try {
-                    Intent intent = new Intent(MenuActivity.this, SearchDancerActivity.class);
-                    startActivity(intent);
-                    finish();
-                } catch (Exception e) { }
+                final String[] options = {
+                        "по имени", "по коду", "по названию клуба"
+                };
+
+                AlertDialog.Builder builder = new AlertDialog.Builder(v.getContext());
+                builder.setTitle("Поиск танцора:");
+                builder.setItems(options, new DialogInterface.OnClickListener() {
+                    @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    if ("по имени".equals(options[which])) {
+                        try {
+                            Intent intent = new Intent(MenuActivity.this, SearchDancerActivity.class);
+                            startActivity(intent);
+                            finish();
+                        } catch (Exception e) { }
+                    } else if ("по коду".equals(options[which])) {
+                        try {
+                            Intent intent = new Intent(MenuActivity.this, SearchByCodeActivity.class);
+                            startActivity(intent);
+                            finish();
+                        } catch (Exception e) { }
+                    } else if ("по названию клуба".equals(options[which])) {
+                        try {
+                            Intent intent = new Intent(MenuActivity.this, SearchByClubActivity.class);
+                            startActivity(intent);
+                            finish();
+                        } catch (Exception e) { }
+                    }
+                    // the user clicked on colors[which]
+                }
+                });
+                builder.show();
+//                try {
+//                    Intent intent = new Intent(MenuActivity.this, SearchDancerActivity.class);
+//                    startActivity(intent);
+//                    finish();
+//                } catch (Exception e) { }
             }
         });
 
