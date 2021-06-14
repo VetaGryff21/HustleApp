@@ -56,12 +56,15 @@ public class RecorderActivity extends AppCompatActivity {
     TextView countClap1;
     TextView countClap2;
     TextView countClap3;
+    TextView countClap4;
     MusicAnalyzer analyzer;
     int fileCounter;
     int recordTime = 6;
     private SampleHistory sh;
     private float[] shSamples;
     FloatFFT_1D fft = new FloatFFT_1D(1024);
+    private static BPMBestGuess bpm;
+    public double dbpm = 0;
 
     private String txtPath;
 
@@ -75,12 +78,14 @@ public class RecorderActivity extends AppCompatActivity {
         requestRecordAudioPermission();
         h = new Handler(Looper.getMainLooper());
         fileCounter = 0;
+        bpm = new BPMBestGuess();
 
         recordPathWav = this.getFilesDir().getAbsolutePath() + "/micrec1.wav";
         View startRecord = findViewById(R.id.start_record);
         countClap1 = findViewById(R.id.textinput_1);
         countClap2 = findViewById(R.id.textinput_2);
         countClap3 = findViewById(R.id.textinput_3);
+        countClap4 = findViewById(R.id.textinput_4);
         analyzer = new MusicAnalyzer();
         ProgressBar progressBar = findViewById(R.id.progressBar);
         progressBar.setVisibility(View.INVISIBLE);
@@ -97,6 +102,7 @@ public class RecorderActivity extends AppCompatActivity {
                 countClap1.setText("Идет запись");
                 countClap2.setText("");
                 countClap3.setText("");
+                countClap4.setText("");
                 Runnable r = () -> {
                     try {
                         startRecord.setEnabled(true);
@@ -137,9 +143,6 @@ public class RecorderActivity extends AppCompatActivity {
         if (recordFile.exists() && recordFile.isFile()) {
             channel = channelCount == 1 ? AudioFormat.CHANNEL_IN_MONO : AudioFormat.CHANNEL_IN_STEREO;
             try {
-//                bufferSize = AudioRecord.getMinBufferSize(sampleRate,
-//                        channel,
-//                        AudioFormat.ENCODING_PCM_16BIT);
                 bufferSize = 128;
                 if (bufferSize == AudioRecord.ERROR || bufferSize == AudioRecord.ERROR_BAD_VALUE) {
                     bufferSize = AudioRecord.getMinBufferSize(sampleRate,
@@ -182,7 +185,6 @@ public class RecorderActivity extends AppCompatActivity {
     }
 
     private void playRec() throws IOException {
-        countClap2.setText("Идет анализ");
         MediaPlayer mediaPlayer = new MediaPlayer();
         mediaPlayer.setDataSource(recordPathWav);
         mediaPlayer.prepare();
@@ -220,41 +222,26 @@ public class RecorderActivity extends AppCompatActivity {
             SampleHistory sh1 = new SampleHistory(sampleRate, 5);
 
 
-//            dbpm = bpm.getBPM();
-//            dbpm = Math.round(dbpm);
+            dbpm = bpm.getBPM();
+            dbpm = Math.round(dbpm);
 
-            Double db = BPMDetect.detectBPM(BPMDetect.filteredIntegral(newBassArray),
-                        sampleRate, 0);
-            Double dm = BPMDetect.detectBPM(BPMDetect.filteredIntegral(newMidArray),
-                        sampleRate, 1);
-            Double dt = BPMDetect.detectBPM(BPMDetect.filteredIntegral(newTrebleArray),
-                        sampleRate, 2);
+            int[] bpms = new int[3];
+            bpms[0] = (int) Math.round(BPMDetect.detectBPM(BPMDetect.filteredIntegral(newBassArray),
+                        sampleRate, 0));
+            bpms[1] = (int) Math.round(BPMDetect.detectBPM(BPMDetect.filteredIntegral(newMidArray),
+                        sampleRate, 1));
+            bpms[2] = (int) Math.round(BPMDetect.detectBPM(BPMDetect.filteredIntegral(newTrebleArray),
+                        sampleRate, 2));
 
+            //countClap2.setText("Алгоритм 2: " +  BPMDetect.confidence[0] + " " +  BPMDetect.confidence[1] + " " +  BPMDetect.confidence[2] +" " + bpms[getBestGuess(BPMDetect.confidence)] + " ");
             //downbeat = BPMDetect.getDownbeat(sh.getFftSamples(SampleHistory.FFT_BASS), sampleRate);
 
 //---------- analyzer
             Log.i(LOG_TAG, "=======algo1==============");
-//            int resultAlgo11 = analyzer.Algo1(newBassArray);
-//            Log.i(LOG_TAG, "=======algo2==============");
-//            int resultAlgo12 = analyzer.Algo1(newMidArray);
-//            Log.i(LOG_TAG, "=======algo3==============");
-//            int resultAlgo13 = analyzer.Algo1(newTrebleArray);
-//            int resultAlgo21 = analyzer.Algo2(newBassArray);
-//            int resultAlgo22 = analyzer.Algo2(newMidArray);
-//            int resultAlgo23 = analyzer.Algo2(newTrebleArray);
-//            int resultAlgo31 = analyzer.Algo3(newBassArray);
-//            int resultAlgo32 = analyzer.Algo3(newMidArray);
-//            int resultAlgo33 = analyzer.Algo3(newTrebleArray);
-//            int resultAlgo41 = analyzer.Algo4(newBassArray);
-//            int resultAlgo42 = analyzer.Algo4(newMidArray);
-//            int resultAlgo43 = analyzer.Algo4(newTrebleArray);
-
-//            countClap1.setText("Алгоритм 1: " + resultAlgo11 + " " + resultAlgo12 + " " + resultAlgo13 +" " + resultAlgo41 +"");
-//            countClap2.setText("Алгоритм 2: " + resultAlgo21 + " " + resultAlgo22 + " " + resultAlgo23 +" " + resultAlgo42 +"");
-//            countClap3.setText("Алгоритм 3: " + resultAlgo31 + " " + resultAlgo32 + " " + resultAlgo33 +" " + resultAlgo43 +"");
-            countClap1.setText("Алгоритм 1: " + db + " " + dm + " " + dt +" " +"");
-
-
+            countClap1.setText("Bass: " + bpms[0] + " " + Math.round(BPMDetect.confidence[0]));
+            countClap2.setText("Mid: " + bpms[1] + " " + Math.round(BPMDetect.confidence[1]));
+            countClap3.setText("Treble: " + bpms[2] + " " + Math.round(BPMDetect.confidence[2]));
+            countClap4.setText("Result: " + Math.round(bpms[getBestGuess(BPMDetect.confidence)]));
 
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -379,7 +366,6 @@ public class RecorderActivity extends AppCompatActivity {
         }
     }
 
-
     public void stopRecording() throws IOException {
         if (recorder != null) {
             isRecording = false;
@@ -490,11 +476,6 @@ public class RecorderActivity extends AppCompatActivity {
         h.removeCallbacksAndMessages(null);
     }
 
-
-    private static BPMBestGuess		bpm					= new BPMBestGuess();
-    public double					dbpm				= 0;
-    public long						downbeat			= 0;
-
     @Override
     public void onBackPressed() {
         backActivity();
@@ -508,6 +489,22 @@ public class RecorderActivity extends AppCompatActivity {
         } catch (Exception e) {
             System.out.println("Какая-то ошибочка");
         }
+    }
+
+    public static BPMBestGuess getBPM()
+    {
+        return bpm;
+    }
+
+    public static int getBestGuess(double[] conf)
+    {
+        if (conf[0] >= conf[1] && conf[0] >= conf[2])
+            return 0;
+        if (conf[1] >= conf[0] && conf[1] >= conf[2])
+            return 1;
+        if (conf[2] >= conf[0] && conf[2] >= conf[1])
+            return 2;
+        return -1;
     }
 }
 

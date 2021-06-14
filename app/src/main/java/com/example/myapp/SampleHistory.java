@@ -51,8 +51,6 @@ public class SampleHistory {
     }
 
     public float[] getFftSamples(int type) {
-        Log.d("TAG get  ", "++++" + fftBassSamples + " " + fftMidSamples + " " + fftTrebleSamples);
-        Log.d("TAG get size  ", " " +fftBassSamples.length + " " + fftBassSamples.toString());
         switch (type) {
             case FFT_BASS:   return fftBassSamples.clone();
             case FFT_MID:    return fftMidSamples.clone();

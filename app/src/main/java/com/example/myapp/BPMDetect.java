@@ -1,5 +1,7 @@
 package com.example.myapp;
 
+import android.util.Log;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -72,11 +74,12 @@ public class BPMDetect {
             if (bpm[sampleType] > 0) {
                 while (bpm[sampleType] > 180)
                     bpm[sampleType] /= 2.0;
-                while (bpm[sampleType] < 90)
+                while (bpm[sampleType] < 80)
                     bpm[sampleType] *= 2.0;
             }
         }
-
+        RecorderActivity.getBPM().appendBPMGuess(bpm[sampleType], confidence[sampleType]);
+        Log.d("", "confidence[sampleType] " + confidence[sampleType]);
         return bpm[sampleType];
     }
 
@@ -98,10 +101,7 @@ public class BPMDetect {
         for (int i = 0; i < flags.size(); i++)
             for (int j = i + 1; j < flags.size(); j++) {
                 int distance = Math.abs(flags.get(i) - flags.get(j));
-                // while (distance > (sampleRate * 60 / 180))
-                // distance /= 2;
                 distances.add(distance);
-                // System.out.print(distance+"|");
             }
         HashMap<Integer, Double> distanceMap = new HashMap<Integer, Double>();
         for (int distance : distances) {
@@ -144,7 +144,7 @@ public class BPMDetect {
                 return bpm;
             while (bpm < 70)
                 bpm *= 2.0;
-            while (bpm > 180)
+            while (bpm > 150)
                 bpm /= 2.0;
             return bpm;
         }

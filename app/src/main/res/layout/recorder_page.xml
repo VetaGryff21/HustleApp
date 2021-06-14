@@ -39,6 +39,13 @@
             android:text=""
             android:textAlignment="center"
             android:textSize="15pt" />
+        <TextView
+            android:id="@+id/textinput_4"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:textAlignment="center"
+            android:textSize="15pt" />
 
         <ProgressBar
             android:id="@+id/progressBar"
